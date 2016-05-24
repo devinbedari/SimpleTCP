@@ -21,7 +21,6 @@ using namespace std;
 
 typedef struct addrinfo AddressInfo;
 
-
 // Handles parsing and errors
 void parse( int argcount, char *argval[], char* &host_name, char* &port_n)
 {
@@ -61,14 +60,37 @@ int main ( int argc, char *argv[] )
     char* port;                                 // Port number to connect to
     int udpSocket;                              // File descriptor for the socket
 
+    // Generate the address structures
+    AddressInfo *bindAddress, *p;
+
     // Parse the input
-    parse(argc, argv, hostName, port);
+    parse(argc, argv, hostName, port); 
 
     // Initialize the connection
-    initializeSocket(hostName, port, &udpSocket);
+    initializeSocketClient(hostName, port, &udpSocket, bindAddress, p);
+
+    // Debugging Only: Test send datagram:
+    // Create the message buffer to send
+    char messageToSend[30];
+    int flag = 1;
+    int bytesSent;
+    strcpy(messageToSend, "Hello, World!");
+    for (size_t i = 0; flag != 0; i++) 
+    {
+        // ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen);
+        if ( (bytesSent = (sendto(udpSocket, messageToSend, strlen(messageToSend), 0, p->ai_addr, p->ai_addrlen))) == -1) 
+        {
+            cerr << "Could not send datagram to server" << endl;
+            exit(1);
+        }
+        cout << "Sending packet: " << i << endl;
+        cout << "Datagram of " << bytesSent << " bytes sent" << endl;
+        if (bytesSent == 13)
+            flag = 0;
+    }
 
     // Close the connection
-    closeSocket(&udpSocket);
+    closeSocketClient(bindAddress, &udpSocket);
 
     return 0;
 

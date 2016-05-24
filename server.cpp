@@ -11,6 +11,7 @@
 #include <sys/types.h> 
 #include <netinet/in.h>
 #include <sys/stat.h> 
+#include <arpa/inet.h>
 #include <fcntl.h>
 #include <netdb.h>
 #include <unistd.h>
@@ -20,6 +21,7 @@
 
 using namespace std;
 
+#define NPACK 16;
 
 // Handles parsing and errors
 void parse( int argcount, char *argval[], char* &host_name, char* &port_n)
@@ -54,15 +56,43 @@ int main ( int argc, char *argv[] )
     char* hostName;                             // IP or Domain that we need to connect to 
     char* port;                                 // Port number to open socket
     int udpSocket;			                    // Socket descriptor, and file descriptor
-
+    SocketStorage clientInfo;                   // Incoming client datagram address structures 
+    socklen_t sizeClient;                       // Size of client address in bytes
+    
     // Parse the input
     parse(argc, argv, hostName, port);
 
     // Grab the socket descriptor              
-    initializeSocket(hostName, port, &udpSocket);
+    initializeSocketServer(hostName, port, &udpSocket);
+
+    // Debugging Only: From Beej Network Programming Guide
+    // Set size of the sizeClient variable
+    sizeClient = sizeof clientInfo;             
+    char buf[30];
+    // memset(&buf, 0, sizeof(buf));   // Zero out the hints
+    int bytesRec;
+    int flag = 1;
+    cout << "Socket number: " << udpSocket << endl;
+
+    // Test get datagram
+    while(flag)
+    {
+        // Gets datagram
+        // ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen);
+        if ( ( bytesRec = recvfrom( udpSocket, &buf, sizeof(buf), 0, (SocketAddressGen *) &clientInfo, &sizeClient ) ) == -1 )
+        {
+            cerr << "Cannot receive the datagram";
+            break;
+        }
+        else
+        {
+            printf("listener: packet is %d bytes long\n", bytesRec);
+            buf[bytesRec] = '\0';
+            cout << "Listener: packet contains: " << buf << endl;
+        }
+    }
 
     // Close the connection
-    closeSocket(&udpSocket);
-
+    closeSocketServer(&udpSocket);
     cout << endl << "Success!";
 }
