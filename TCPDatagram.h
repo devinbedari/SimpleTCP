@@ -1,5 +1,4 @@
-#ifndef __HTTPREQ__
-#define __HTTPREQ__
+#pragma once
 
 #include <iostream>
 #include <cstring>
@@ -14,11 +13,6 @@ protected:
 	char* host;
 	char* protocolVersion;
 	char* getReq;
-	
-	// Helper fuction
-	void helper(char* buffer, char* &dataToStore);
-	// Clear cstrings
-	void clear();
 
 public:
 	// Default Constructor
@@ -29,14 +23,18 @@ public:
 	~TCPDatagram();
 	// Generate the HTTP request
 	char* genReq();
-	// Parse request
-	void parseReq(char *buffer);
 
-  	// Return protected variables
+	// Clear cstrings
+	void clear();
+
+  	// setters
+	void setPath(char* buf);
+  	void setHost(char* buf);
+  	void setProtocolVersion(char* buf);
+
+  	// getters
 	char* getPath();
   	char* getHost();
   	char* getProtocolVersion();
   	// int getErrorStatus();
 };
-
-#endif

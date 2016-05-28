@@ -31,18 +31,6 @@ TCPDatagram::TCPDatagram(char* fpath, char* fhost) {
 
 }
 
-void TCPDatagram::helper(char* buffer, char* &dataToStore)
-{
-	std::string temp = "";
-	for(int i=0; ((buffer[i] != '\r') && (buffer[i] != ' ')); i++)
-	{
-		temp += buffer[i];
-	}
-
-	dataToStore = new char [temp.length()];
-	std::strcpy(dataToStore, temp.c_str());
-}
-
 char* TCPDatagram::genReq()
 {
 	std::string get = "";
@@ -57,71 +45,6 @@ char* TCPDatagram::genReq()
 	std::strcpy(this->getReq, get.c_str());
 	return this->getReq;
 }
-
-//  Parse the buffer
-void TCPDatagram::parseReq(char* buffer) 
-{
-	// Start by clearing the buffer
-	this->clear();
-
-	// C++ strings are so ez
-	std::string getR = buffer;
-
-	//std::cout << std::endl << "buffer is " << buffer << std::endl ;
-
-	for(unsigned int i = 0; i < getR.length(); i++)
-	{
-		// Parse GET
-		if(getR[i] == 'G')
-		{
-			// Try and store "GET " in the c++ string
-			std::string check = "";
-			check += getR[i];
-			check += getR[i+1];
-			check += getR[i+2];
-			check += getR[i+3];
-
-			// Check if the string that was stored is "GET "
-			if(check == "GET ")
-			{
-				int pathSize;	// Store the length of the path string
-
-				// Accept the path size
-				this->helper(buffer+(i+4), this->path);
-				// std::cout << std::endl << "Path: " << this->path << std::endl;
-				
-				// Compute the path size, and send in this everything after the "GET <path> "
-				pathSize = std::strlen(this->path);
-
-				// Parse the protocol version
-				this->helper(buffer+(i+5+pathSize), this->protocolVersion);
-			}
-		}
-
-		// Parse Host
-		if(getR[i] == 'H' || getR[i] == 'h')
-		{
-			// Try and store "Host  " in the c++ string
-			std::string check = "";
-			check += getR[i];
-			check += getR[i+1];
-			check += getR[i+2];
-			check += getR[i+3];
-			check += getR[i+4];
-			check += getR[i+5];
-
-			// Make string lowercase
-			for(size_t ctr = 0; ctr < check.length(); ctr++)
-				check[ctr] = tolower(check[ctr]);
-
-			// Check if the string that was stored is "Host "
-			if(check == "host: ")
-				this->helper(buffer+(i+6), this->host);
-		}
-	}
-
-}
-
 
 // Clear members
 void TCPDatagram::clear()
@@ -138,7 +61,20 @@ void TCPDatagram::clear()
 	this->protocolVersion = NULL;
 }
 
-// Access methods
+// Setters
+void TCPDatagram::setPath(char* buf) {
+	this->path = buf;
+}
+
+void TCPDatagram::setHost(char* buf) {
+	this->host = buf;
+}
+
+void TCPDatagram::setProtocolVersion(char* buf) {
+	this->protocolVersion = buf;
+}
+
+// Getters
 char* TCPDatagram::getPath() 
 {
 	return this->path;
