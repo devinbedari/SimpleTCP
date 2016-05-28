@@ -1,7 +1,7 @@
-#include "HttpRequest.h"
+#include "TCPDatagram.h"
 
 // Default constructor
-HttpGetRequest::HttpGetRequest()
+TCPDatagram::TCPDatagram()
 {
 	// Initalize all pointers to NULL
 	this->path = NULL;
@@ -14,14 +14,13 @@ HttpGetRequest::HttpGetRequest()
 }
 
 // Destructor
-HttpGetRequest::~HttpGetRequest()
+TCPDatagram::~TCPDatagram()
 {
 	this->clear();
 }
 
 // Parameterized Constructor
-HttpGetRequest::HttpGetRequest(char* fpath, char* fhost)
-{
+TCPDatagram::TCPDatagram(char* fpath, char* fhost) {
 	// Set values
 	this->path = new char [std::strlen(fpath)];
 	std::strcpy(this->path, fpath);
@@ -32,7 +31,7 @@ HttpGetRequest::HttpGetRequest(char* fpath, char* fhost)
 
 }
 
-void HttpGetRequest::helper(char* buffer, char* &dataToStore)
+void TCPDatagram::helper(char* buffer, char* &dataToStore)
 {
 	std::string temp = "";
 	for(int i=0; ((buffer[i] != '\r') && (buffer[i] != ' ')); i++)
@@ -44,7 +43,7 @@ void HttpGetRequest::helper(char* buffer, char* &dataToStore)
 	std::strcpy(dataToStore, temp.c_str());
 }
 
-char* HttpGetRequest::genReq()
+char* TCPDatagram::genReq()
 {
 	std::string get = "";
 	get += "GET ";
@@ -60,7 +59,7 @@ char* HttpGetRequest::genReq()
 }
 
 //  Parse the buffer
-void HttpGetRequest::parseReq(char* buffer) 
+void TCPDatagram::parseReq(char* buffer) 
 {
 	// Start by clearing the buffer
 	this->clear();
@@ -125,7 +124,7 @@ void HttpGetRequest::parseReq(char* buffer)
 
 
 // Clear members
-void HttpGetRequest::clear()
+void TCPDatagram::clear()
 {
 	// Delete all mallocd pointers, set error to 0,and protocolVersion to HTTP/1.0
 	delete this->path;
@@ -140,17 +139,17 @@ void HttpGetRequest::clear()
 }
 
 // Access methods
-char* HttpGetRequest::getPath() 
+char* TCPDatagram::getPath() 
 {
 	return this->path;
 }
 
-char* HttpGetRequest::getHost() 
+char* TCPDatagram::getHost() 
 {
 	return this->host;
 }
 
-char* HttpGetRequest::getProtocolVersion() 
+char* TCPDatagram::getProtocolVersion() 
 {
 	// std::cout << std::endl << this->protocolVersion << std::endl;	
 	return this->protocolVersion;

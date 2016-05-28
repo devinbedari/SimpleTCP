@@ -6,7 +6,7 @@
 #include <string>
 #include <locale>
 
-class HttpGetRequest 
+class TCPDatagram 
 {
 protected:
 	// Protected datamembers
@@ -22,11 +22,11 @@ protected:
 
 public:
 	// Default Constructor
-	HttpGetRequest();
+	TCPDatagram();
 	// Parameterized Constructor
-	HttpGetRequest(char* fpath, char* fhost);
+	TCPDatagram(char* fpath, char* fhost);
 	// Destructor
-	~HttpGetRequest();
+	~TCPDatagram();
 	// Generate the HTTP request
 	char* genReq();
 	// Parse request
