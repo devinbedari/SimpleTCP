@@ -97,7 +97,5 @@ void TCPDatagramBuilder::parseReq(char* buffer)  {
 
 }
 
-// Access methods
-TCPDatagram* TCPDatagramBuilder::getDatagram() {
-	return this->datagram;
-}
+// Accessors
+TCPDatagram* TCPDatagramBuilder::getDatagram() { return this->datagram; }

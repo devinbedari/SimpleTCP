@@ -1,8 +1,7 @@
 #include "TCPDatagram.h"
 
 // Default constructor
-TCPDatagram::TCPDatagram()
-{
+TCPDatagram::TCPDatagram() {
 	// Initalize all pointers to NULL
 	this->path = NULL;
 	this->host = NULL;
@@ -14,8 +13,7 @@ TCPDatagram::TCPDatagram()
 }
 
 // Destructor
-TCPDatagram::~TCPDatagram()
-{
+TCPDatagram::~TCPDatagram() {
 	this->clear();
 }
 
@@ -31,8 +29,7 @@ TCPDatagram::TCPDatagram(char* fpath, char* fhost) {
 
 }
 
-char* TCPDatagram::genReq()
-{
+char* TCPDatagram::genReq() {
 	std::string get = "";
 	get += "GET ";
 	get += this->path;
@@ -47,8 +44,7 @@ char* TCPDatagram::genReq()
 }
 
 // Clear members
-void TCPDatagram::clear()
-{
+void TCPDatagram::clear() {
 	// Delete all mallocd pointers, set error to 0,and protocolVersion to HTTP/1.0
 	delete this->path;
 	delete this->host;
@@ -61,32 +57,12 @@ void TCPDatagram::clear()
 	this->protocolVersion = NULL;
 }
 
-// Setters
-void TCPDatagram::setPath(char* buf) {
-	this->path = buf;
-}
+// Accessors
+void TCPDatagram::setPath(char* buf) { this->path = buf; }
+char* TCPDatagram::getPath() { return this->path; }
 
-void TCPDatagram::setHost(char* buf) {
-	this->host = buf;
-}
+void TCPDatagram::setHost(char* buf) { this->host = buf; }
+char* TCPDatagram::getHost() {return this->host; }
 
-void TCPDatagram::setProtocolVersion(char* buf) {
-	this->protocolVersion = buf;
-}
-
-// Getters
-char* TCPDatagram::getPath() 
-{
-	return this->path;
-}
-
-char* TCPDatagram::getHost() 
-{
-	return this->host;
-}
-
-char* TCPDatagram::getProtocolVersion() 
-{
-	// std::cout << std::endl << this->protocolVersion << std::endl;	
-	return this->protocolVersion;
-}
+void TCPDatagram::setProtocolVersion(char* buf) { this->protocolVersion = buf; }
+char* TCPDatagram::getProtocolVersion() {return this->protocolVersion; }

@@ -5,8 +5,8 @@
 #include <string>
 #include <locale>
 
-class TCPDatagram 
-{
+class TCPDatagram {
+
 protected:
 	// Protected datamembers
 	char* path;
