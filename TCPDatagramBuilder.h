@@ -7,14 +7,14 @@
 #include <stdlib.h>     /* atoi */
 #include "TCPDatagram.h"
 
-enum TCPField { SEQ_NUM, ACK_NUM, WINDOW_SIZE, FLAGS, DATA, DONE };
+enum BuilderState { SEQ_NUM, ACK_NUM, WINDOW_SIZE, FLAGS, DATA, DONE };
 
 class TCPDatagramBuilder {
 
 protected:
 	// Protected datamembers
 	TCPDatagram* datagram;
-	TCPField currentState;
+	BuilderState currentState;
 	bool complete; // is datagram complete?
 
 	// process input stream

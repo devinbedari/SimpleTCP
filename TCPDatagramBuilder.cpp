@@ -39,7 +39,7 @@ void TCPDatagramBuilder::feed(char* buffer) {
 // process input stream
 void TCPDatagramBuilder::process()  {
 
-	TCPField before = this->currentState;
+	BuilderState before = this->currentState;
 
 	switch (this->currentState) {
 
