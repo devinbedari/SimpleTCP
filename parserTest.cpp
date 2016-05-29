@@ -10,24 +10,24 @@ const int BUFFER_SIZE = 5;
 
 int main( int argc, char *argv[] ) {
 
-	TCPDatagram d;
+	TCPDatagram input;
 
-	d.sequenceNum = 5;
-	d.ackNum = 12;
-	d.windowSize = 5;
-	d.SYN = true;
-	d.data = "hello";
+	input.sequenceNum = 5;
+	input.ackNum = 12;
+	input.windowSize = 5;
+	input.SYN = true;
+	input.data = "hello";
 
-	string a = d.toString();
-	a += "world"; // give some excess
-	cout << "Input Stream: " << a << endl;
+	string raw = input.toString();
+	raw += "world"; // give some excess
+	cout << "Input Stream: " << raw << endl;
 
+	// convert to c string
 	char *str;
-	str = new char[a.length()];
-	strcpy(str, a.c_str());
+	str = new char[raw.length()];
+	strcpy(str, raw.c_str());
 
-	TCPDatagramBuilder b;
-
+	TCPDatagramBuilder builder;
 
 	// split into parts to simulate streaming data
 	char *buf;
@@ -36,19 +36,19 @@ int main( int argc, char *argv[] ) {
 		memset(buf, '\0', BUFFER_SIZE+1); // clear buffer
 		strncpy(buf, str+i, BUFFER_SIZE);
 		// feed into datagram builder
-		b.feed(buf);
+		builder.feed(buf);
 	}
 
-	TCPDatagram o = *(b.getDatagram());
-	cout << "Sequence Num: " << o.sequenceNum << endl;
-	cout << "ACK Number: " << o.ackNum << endl;
-	cout << "Window Size: " << o.windowSize << endl;
-	cout << "Data: " << o.data << endl;
-	cout << "ACK: " << o.ACK << endl;
-	cout << "SYN: " << o.SYN << endl;
-	cout << "FIN: " << o.FIN << endl;
-	cout << "Datagram complete? " << (b.isComplete() ? "true" : "false") << endl;
-	cout << "Excess: " << b.currentString << endl;
+	TCPDatagram output = *(builder.getDatagram());
+	cout << "Sequence Num: " << output.sequenceNum << endl;
+	cout << "ACK Number: " << output.ackNum << endl;
+	cout << "Window Size: " << output.windowSize << endl;
+	cout << "Data: " << output.data << endl;
+	cout << "ACK: " << output.ACK << endl;
+	cout << "SYN: " << output.SYN << endl;
+	cout << "FIN: " << output.FIN << endl;
+	cout << "Datagram complete? " << (builder.isComplete() ? "true" : "false") << endl;
+	cout << "Excess: " << builder.currentString << endl;
 
 	delete str;
 	return 0;

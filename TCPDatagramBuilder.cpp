@@ -116,4 +116,5 @@ void TCPDatagramBuilder::process()  {
 
 // Accessors
 TCPDatagram* TCPDatagramBuilder::getDatagram() { return this->datagram; }
+
 bool TCPDatagramBuilder::isComplete() { return this->complete; }
