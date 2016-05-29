@@ -1,6 +1,6 @@
 # Makefile
 GPP=g++
-CFLAGS= -g -Wall -Werror
+CFLAGS= -g -Wall -Werror -std=c++0x
 
 # Targets
 all: client server

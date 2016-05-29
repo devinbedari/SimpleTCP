@@ -22,12 +22,6 @@ TCPDatagramBuilder::TCPDatagramBuilder(char* initialString) {
 	this->feed(initialString);
 }
 
-int stoi (string str) {
-	char* temp = new char[str.length()];
-	std::strcpy(temp, str.c_str());
-	return atoi(temp);
-}
-
 unsigned int TCPFieldToUInt (string str) {
 	// first reverse the chars, because TCP fields are given in network-byte order, aka Big Endian
 	string littleEndian = "";
@@ -79,10 +73,14 @@ void TCPDatagramBuilder::process()  {
 		case FLAGS:
 			if (this->currentString.length() < 2) break; // incomplete field, can't parse it yet
 
-			this->datagram->ACK = (this->currentString.at(5) == '1');
-			this->datagram->SYN = (this->currentString.at(6) == '1');
-			this->datagram->FIN = (this->currentString.at(7) == '1');
-			this->currentString = this->currentString.substr(2); // finished parsing the field, remove it from the input stream
+			{
+				unsigned int flags = TCPFieldToUInt(this->currentString.substr(0,2));
+
+				this->datagram->ACK = !!(flags & 0b00100000);
+				this->datagram->SYN = !!(flags & 0b01000000);
+				this->datagram->FIN = !!(flags & 0b10000000);
+				this->currentString = this->currentString.substr(2); // finished parsing the field, remove it from the input stream
+			}
 
 			this->currentState = DATA; // change state
 			break;
