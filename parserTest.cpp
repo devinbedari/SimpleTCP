@@ -41,13 +41,13 @@ int main( int argc, char *argv[] ) {
 
 	TCPDatagram o = *(b.getDatagram());
 	cout << "Sequence Num: " << o.sequenceNum << endl;
-	cout << endl << "ACK Number: " << o.ackNum << endl;
-	cout << endl << "Window Size: " << o.windowSize << endl;
-	cout << endl << "Data: " << o.data << endl;
-	cout << endl << "ACK: " << o.ACK << endl;
-	cout << endl << "SYN: " << o.SYN << endl;
-	cout << endl << "FIN: " << o.FIN << endl;
-	cout << endl << "Excess: " << b.currentString << endl;
+	cout << "ACK Number: " << o.ackNum << endl;
+	cout << "Window Size: " << o.windowSize << endl;
+	cout << "Data: " << o.data << endl;
+	cout << "ACK: " << o.ACK << endl;
+	cout << "SYN: " << o.SYN << endl;
+	cout << "FIN: " << o.FIN << endl;
+	cout << "Excess: " << b.currentString << endl;
 
 	delete str;
 	return 0;
