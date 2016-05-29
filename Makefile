@@ -14,12 +14,10 @@ server.o:
 	$(GPP) $(CFLAGS) -c server.cpp -o server.o $(MTOPTIONS)
 Common.o:
 	$(GPP) $(CFLAGS) -c Common.cpp -o Common.o
-TCPDatagram.o:
-	$(GPP) $(CFLAGS) -c TCPDatagram.cpp -o TCPDatagram.o
 TCPDatagramBuilder.o:
 	$(GPP) $(CFLAGS) -c TCPDatagramBuilder.cpp -o TCPDatagramBuilder.o
-parsertest: TCPDatagram.o TCPDatagramBuilder.o
+parsertest: TCPDatagramBuilder.o
 	$(GPP) $(CFLAGS) -c parserTest.cpp -o parsertest.o
-	$(GPP) parsertest.o TCPDatagram.o TCPDatagramBuilder.o -o ptest.out
+	$(GPP) parsertest.o TCPDatagramBuilder.o -o ptest.out
 clean:
 	rm -f *.o *.out

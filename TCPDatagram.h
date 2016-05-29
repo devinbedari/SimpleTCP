@@ -1,40 +1,16 @@
 #pragma once
 
-#include <iostream>
-#include <cstring>
 #include <string>
-#include <locale>
 
-class TCPDatagram {
+struct TCPDatagram {
+	unsigned int sequenceNum;
+	unsigned int ackNum;
+	unsigned int windowSize;
 
-protected:
-	// Protected datamembers
-	char* path;
-	char* host;
-	char* protocolVersion;
-	char* getReq;
+	// flags
+	bool ACK; // Indicates that there the value of Acknowledgment Number field is valid
+	bool SYN; //Synchronize sequence numbers (TCP connection establishment)
+	bool FIN; // No more data from sender (TCP connection termination)
 
-public:
-	// Default Constructor
-	TCPDatagram();
-	// Parameterized Constructor
-	TCPDatagram(char* fpath, char* fhost);
-	// Destructor
-	~TCPDatagram();
-	// Generate the HTTP request
-	char* genReq();
-
-	// Clear cstrings
-	void clear();
-
-  	// setters
-	void setPath(char* buf);
-  	void setHost(char* buf);
-  	void setProtocolVersion(char* buf);
-
-  	// getters
-	char* getPath();
-  	char* getHost();
-  	char* getProtocolVersion();
-  	// int getErrorStatus();
+	std::string data;
 };

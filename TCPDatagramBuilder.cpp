@@ -1,8 +1,11 @@
 #include "TCPDatagramBuilder.h"
 
+using namespace std;
+
 // Default constructor
 TCPDatagramBuilder::TCPDatagramBuilder() {
 	this->datagram = new TCPDatagram();
+	this->currentState = SEQ_NUM;
 }
 
 // Destructor
@@ -16,85 +19,99 @@ TCPDatagramBuilder::TCPDatagramBuilder(TCPDatagram* datagram) {
 
 // Constructor with an initial string to parse
 TCPDatagramBuilder::TCPDatagramBuilder(char* initialString) {
-	parseReq(initialString);
+	this->feed(initialString);
 }
 
-char* TCPDatagramBuilder::helper(char* buffer) {
-	std::string temp = "";
-	for(int i=0; ((buffer[i] != '\r') && (buffer[i] != ' ')); i++) {
-		temp += buffer[i];
-	}
-
-	char* dataToStore = new char [temp.length()];
-	std::strcpy(dataToStore, temp.c_str());
-	return dataToStore;
+int stoi (string str) {
+	char* temp = new char[str.length()];
+	std::strcpy(temp, str.c_str());
+	return atoi(temp);
 }
 
-//  Parse the buffer
-void TCPDatagramBuilder::parseReq(char* buffer)  {
-	// Start by clearing the buffer
-	this->datagram->clear();
+unsigned int TCPFieldToUInt (string str) {
+	// first reverse the chars, because TCP fields are given in network-byte order, aka Big Endian
+	string littleEndian = "";
+	for (int i = str.length()-1; i >= 0; i--)
+		littleEndian += str.at(i);
+	return (unsigned int) stoi(littleEndian);
+}
 
-	// C++ strings are so ez
-	std::string getR = buffer;
+// add buffer to input stream, and process the updated input stream
+void TCPDatagramBuilder::feed(char* buffer) {
+	this->currentString += buffer;
+	this->process();
+}
 
-	//std::cout << std::endl << "buffer is " << buffer << std::endl ;
+// process input stream
+void TCPDatagramBuilder::process()  {
 
-	for(unsigned int i = 0; i < getR.length(); i++)
-	{
-		// Parse GET
-		if(getR[i] == 'G')
-		{
-			// Try and store "GET " in the c++ string
-			std::string check = "";
-			check += getR[i];
-			check += getR[i+1];
-			check += getR[i+2];
-			check += getR[i+3];
+	TCPField before = this->currentState;
 
-			// Check if the string that was stored is "GET "
-			if(check == "GET ")
-			{
-				int pathSize;	// Store the length of the path string
+	switch (this->currentState) {
 
-				// Accept the path size
-				char* buf = this->helper(buffer+(i+4));
-				this->datagram->setPath(buf);
-				// std::cout << std::endl << "Path: " << this->path << std::endl;
-				
-				// Compute the path size, and send in this everything after the "GET <path> "
-				pathSize = std::strlen(this->datagram->getPath());
+		case SEQ_NUM:
+			if (this->currentString.length() < 2) break; // incomplete field, can't parse it yet
 
-				// Parse the protocol version
-				buf = this->helper(buffer+(i+5+pathSize));
-				this->datagram->setProtocolVersion(buf);
+			this->datagram->sequenceNum = TCPFieldToUInt(this->currentString.substr(0,2));
+			this->currentString = this->currentString.substr(2); // finished parsing the field, remove it from the input stream
+
+			this->currentState = ACK_NUM; // change state
+			break;
+
+		case ACK_NUM:
+			if (this->currentString.length() < 2) break; // incomplete field, can't parse it yet
+
+			this->datagram->ackNum = TCPFieldToUInt(this->currentString.substr(0,2));
+			this->currentString = this->currentString.substr(2); // finished parsing the field, remove it from the input stream
+
+			this->currentState = WINDOW_SIZE; // change state
+			break;
+
+		case WINDOW_SIZE:
+			if (this->currentString.length() < 2) break; // incomplete field, can't parse it yet
+
+			this->datagram->windowSize = TCPFieldToUInt(this->currentString.substr(0,2));
+			this->currentString = this->currentString.substr(2); // finished parsing the field, remove it from the input stream
+
+			this->currentState = FLAGS; // change state
+			break;
+
+		case FLAGS:
+			if (this->currentString.length() < 2) break; // incomplete field, can't parse it yet
+
+			this->datagram->ACK = (this->currentString.at(5) == '1');
+			this->datagram->SYN = (this->currentString.at(6) == '1');
+			this->datagram->FIN = (this->currentString.at(7) == '1');
+			this->currentString = this->currentString.substr(2); // finished parsing the field, remove it from the input stream
+
+			this->currentState = DATA; // change state
+			break;
+
+		case DATA:
+			// consume all
+			this->datagram->data += this->currentString;
+			currentString = "";
+
+			if (this->datagram->data.length() >= this->datagram->windowSize) {
+				// clip data to window size, give excess back to currentString
+				this->currentString = this->datagram->data.substr(this->datagram->windowSize);
+				this->datagram->data = this->datagram->data.substr(0, this->datagram->windowSize);
+
+				this->currentState = DONE;
 			}
-		}
+			break;
 
-		// Parse Host
-		if(getR[i] == 'H' || getR[i] == 'h')
-		{
-			// Try and store "Host  " in the c++ string
-			std::string check = "";
-			check += getR[i];
-			check += getR[i+1];
-			check += getR[i+2];
-			check += getR[i+3];
-			check += getR[i+4];
-			check += getR[i+5];
+		case DONE:
+			// do nothing, just let currentString grow
+			break;
 
-			// Make string lowercase
-			for(size_t ctr = 0; ctr < check.length(); ctr++)
-				check[ctr] = tolower(check[ctr]);
-
-			// Check if the string that was stored is "Host "
-			if(check == "host: ") {
-				char* buf = this->helper(buffer+(i+6));
-				this->datagram->setHost(buf);
-			}
-		}
+		default:
+			cerr << "TCPDatagramBuilder: unknown state" << endl;
+			break;
 	}
 
+	// if the state changed, we need to run the new state
+	if (this->currentState != before) this->process();
 }
 
 // Accessors
