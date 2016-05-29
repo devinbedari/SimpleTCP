@@ -96,11 +96,13 @@ void TCPDatagramBuilder::process()  {
 				this->datagram->data = this->datagram->data.substr(0, this->datagram->windowSize);
 
 				this->currentState = DONE;
+				this->complete = true;
 			}
 			break;
 
 		case DONE:
 			// do nothing, just let currentString grow
+			this->complete = true;
 			break;
 
 		default:
@@ -114,3 +116,4 @@ void TCPDatagramBuilder::process()  {
 
 // Accessors
 TCPDatagram* TCPDatagramBuilder::getDatagram() { return this->datagram; }
+bool TCPDatagramBuilder::isComplete() { return this->complete; }

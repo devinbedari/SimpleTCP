@@ -15,6 +15,7 @@ protected:
 	// Protected datamembers
 	TCPDatagram* datagram;
 	TCPField currentState;
+	bool complete; // is datagram complete?
 
 	// process input stream
 	void process();
@@ -35,4 +36,5 @@ public:
 	void feed(char* buffer);
 
 	TCPDatagram* getDatagram();
+	bool isComplete();
 };

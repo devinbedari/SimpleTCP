@@ -47,6 +47,7 @@ int main( int argc, char *argv[] ) {
 	cout << "ACK: " << o.ACK << endl;
 	cout << "SYN: " << o.SYN << endl;
 	cout << "FIN: " << o.FIN << endl;
+	cout << "Datagram complete? " << (b.isComplete() ? "true" : "false") << endl;
 	cout << "Excess: " << b.currentString << endl;
 
 	delete str;
