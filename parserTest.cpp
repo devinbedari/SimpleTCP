@@ -6,6 +6,8 @@
 
 using namespace std;
 
+const int BUFFER_SIZE = 5;
+
 int main( int argc, char *argv[] ) {
 
 	TCPDatagram d;
@@ -21,11 +23,22 @@ int main( int argc, char *argv[] ) {
 	cout << "Input Stream: " << a << endl;
 
 	char *str;
-	str = new char [a.length()];
+	str = new char[a.length()];
 	strcpy(str, a.c_str());
-	//cout << endl << str << endl;
+
 	TCPDatagramBuilder b;
-	b.feed(str);
+
+
+	// split into parts to simulate streaming data
+	char *buf;
+	buf = new char [BUFFER_SIZE+1]; // extra character for null terminator
+	for (unsigned int i = 0; i < strlen(str); i+=BUFFER_SIZE) {
+		memset(buf, '\0', BUFFER_SIZE+1); // clear buffer
+		strncpy(buf, str+i, BUFFER_SIZE);
+		// feed into datagram builder
+		b.feed(buf);
+	}
+
 	TCPDatagram o = *(b.getDatagram());
 	cout << "Sequence Num: " << o.sequenceNum << endl;
 	cout << endl << "ACK Number: " << o.ackNum << endl;
