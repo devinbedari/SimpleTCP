@@ -76,3 +76,10 @@ void parsePacket(char*& packet, Headers& headerVal, char*& payload)
 	payload = new char[strlen(packet+8)];
 	strcpy(payload, packet+8);
 }
+
+void getFlags(uint16_t flag, bool &ACK, bool &SYN, bool &FIN)
+{
+	ACK = flag & (0x0001);
+	SYN = flag & (0x0002);
+	FIN = flag & (0x0004);
+}

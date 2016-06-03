@@ -17,12 +17,13 @@ typedef struct tcpHeader
 
 enum
 {
-    ACK = 1 << 13,
-    SYN = 1 << 14,
-    FIN = 1 << 15
+    ACK = 1 << 0,
+    SYN = 1 << 1,
+    FIN = 1 << 2
 };
 
 void setHeader(uint16_t seq, uint16_t ack, uint16_t winSize, uint16_t flag, Headers &mod);
+void getFlags(uint16_t flag, bool &ACK, bool &SYN, bool &FIN);
 uint16_t genRand();
 uint16_t genNextNum (uint16_t prev);
 void genPacket(char*& packet, Headers& headerVal, char* payload);

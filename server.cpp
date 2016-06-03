@@ -114,10 +114,63 @@ int main ( int argc, char *argv[] )
     // Bytes received
     int bytesRec;
     
+    // Grab file to download
+
+
     // Listen for incoming requests
     while(!fin)
     {
-        
+        // ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen);
+        if ( ( bytesRec = recvfrom( udpSocket, &buf, MSS, 0, (SocketAddressGen *) &clientInfo, &sizeClient ) ) == -1 )
+        {
+            cerr << "Could not obtain incoming SYN datagram" << endl;
+            continue;
+        }
+        // Process packet for SYN
+        else
+        {
+            // Parse the incoming request
+            TCPDatagramBuilder builder;
+            builder.feed(buf);
+            TCPDatagram output = *(builder.getDatagram());
+            
+            // Check if the SYN flag is on
+            if(output.SYN == 1)
+            {
+                // Generate SYN/ACK
+                TCPDatagram ackConnection;
+
+                input.sequenceNum = genRand();
+                input.ackNum = genNextNum(output.sequenceNum, 1);
+                input.windowSize = 5;
+                input.SYN = true;
+                input.ACK = true;
+                input.data = "";
+                string synackPacket = input.toString();
+
+                // Store the number of bytes sent
+                int bytesSent;
+                
+                // Send SYN/ACK
+                if( (bytesSent = (sendto(udpSocket, synackPacket.c_str(), synackPacket.length(), 0, (SocketAddressGen *)& clientInfo, sizeClient ))) == -1)
+                {
+                    cerr << "Could not send SYN/ACK" << endl;
+                    continue;
+                }
+                // Grab ACK + filename
+                else
+                {
+                    builder.feed(buf);
+                    output = *(builder.getDatagram());
+
+                }
+            }
+            else
+            {
+                cerr << "Connection was not established. No SYN was initiated." << std::endl;
+                continue;
+            }
+        }
     }
 
     // Close the connection

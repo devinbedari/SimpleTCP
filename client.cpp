@@ -69,6 +69,7 @@ int main ( int argc, char *argv[] )
     // Initialize the connection
     initializeSocketClient(hostName, port, &udpSocket, bindAddress, p);
 
+    /*
     // Debugging Only: Test send datagram:
     // Create the message buffer to send
     char messageToSend[30];
@@ -88,6 +89,7 @@ int main ( int argc, char *argv[] )
         if (bytesSent == 13)
             flag = 0;
     }
+    */
 
     // Close the connection
     closeSocketClient(bindAddress, &udpSocket);
