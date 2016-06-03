@@ -102,3 +102,17 @@ void closeSocketClient( AddressInfo *address, int *socketDesc )
     freeaddrinfo(address); 
     close(*socketDesc);
 }
+
+// Generate a random starting sequence number
+uint16_t genRand() 
+{ 
+    return (rand() % 0xFFFF);
+} 
+
+// Generate the next sequence number for n bytes received
+uint16_t genNextNum (uint16_t prev, uint16_t incBytes) 
+{ 
+    uint32_t prev_val = (uint32_t) prev;
+    uint32_t bytes_to_int = (uint32_t) incBytes;
+    return ((prev + incBytes) % (0xFFFF)); 
+} 

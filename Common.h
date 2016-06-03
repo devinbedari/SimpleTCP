@@ -20,5 +20,6 @@ void initializeSocketServer(char* const &hostN, char* const &portN, int *socketD
 void initializeSocketClient(char* const &hostN, char* const &portN, int *socketDesc, AddressInfo* &bindPort, AddressInfo* &ptr);
 void closeSocketServer( int *socket );
 void closeSocketClient( AddressInfo* address, int* socketDesc );
-
 void closeSocket( int *socket );
+uint16_t genRand();
+uint16_t genNextNum (uint16_t prev);

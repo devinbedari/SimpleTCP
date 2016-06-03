@@ -18,19 +18,22 @@
 
 // User defined headers
 #include "Common.h"
+#include "TCPDatagram.h"
+#include "TCPDatagramBuilder.h"
 
 using namespace std;
 
-#define NPACK 16;
+// Define constants 
+const unsigned int MSS = 1032;
 
 // Handles parsing and errors
-void parse( int argcount, char *argval[], char* &host_name, char* &port_n)
+void parse( int argcount, char *argval[], char* &host_name, char* &port_n, char* &host_dir)
 {
     // Display help message if the number of arguements are incorrect
-    if ( argcount != 3 )
+    if ( argcount != 4 )
     {
         // We print argv[0] assuming it is the program name
-        cout << "Usage: "<< argval[0] << " <hostname> <port>" << endl;
+        cout << "Usage: "<< argval[0] << " <hostname> <port> <hosting_directory>" << endl;
         exit(0);
     }
     // Parse values
@@ -47,6 +50,8 @@ void parse( int argcount, char *argval[], char* &host_name, char* &port_n)
             cerr << "Error: port number is invalid" << endl;
             exit(1);
         }
+
+        host_dir = argval[3];
     }
 }
 
@@ -55,6 +60,7 @@ int main ( int argc, char *argv[] )
     // Variable declarations
     char* hostName;                             // IP or Domain that we need to connect to 
     char* port;                                 // Port number to open socket
+    char* hostDir;                              // Directory that is being hosted
     int udpSocket;			                    // Socket descriptor, and file descriptor
     SocketStorage clientInfo;                   // Incoming client datagram address structures 
     socklen_t sizeClient;                       // Size of client address in bytes
@@ -65,9 +71,10 @@ int main ( int argc, char *argv[] )
     // Grab the socket descriptor              
     initializeSocketServer(hostName, port, &udpSocket);
 
+    /*
     // Debugging Only: From Beej Network Programming Guide
     // Set size of the sizeClient variable
-    sizeClient = sizeof clientInfo;             
+    sizeClient = sizeof clientInfo;         
     char buf[30];
     // memset(&buf, 0, sizeof(buf));   // Zero out the hints
     int bytesRec;
@@ -90,6 +97,27 @@ int main ( int argc, char *argv[] )
             buf[bytesRec] = '\0';
             cout << "Listener: packet contains: " << buf << endl;
         }
+    }
+    */ 
+
+    // FIN flag
+    int fin = 0;
+
+    // Send SYN and ACK:
+
+    // Set size of the sizeClient variable
+    sizeClient = sizeof clientInfo;
+    
+    // Buffer to send
+    char buf[MSS];
+
+    // Bytes received
+    int bytesRec;
+    
+    // Listen for incoming requests
+    while(!fin)
+    {
+        
     }
 
     // Close the connection
