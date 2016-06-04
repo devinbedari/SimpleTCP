@@ -22,12 +22,27 @@ TCPDatagramBuilder::TCPDatagramBuilder(char* initialString, int n) {
 	this->feed(initialString, n);
 }
 
+unsigned char reverseBits(unsigned char x) {
+
+	unsigned char bigEndian = 0;
+	for (int i = 0; i < 8; i++) // move through the bits of x left-to-right
+		bigEndian = (bigEndian << 1) | ((x >> i) & 1); // shift bigEndian left by one, and tack on the next bit of x to the right
+
+	return bigEndian;
+}
+
+// insert byte into a certain position in an int
+unsigned int insertByte(unsigned char c, unsigned int x, int pos) {
+	return x | (c << (pos*8));
+}
+
 unsigned int TCPFieldToUInt (string str) {
 	// first reverse the chars, because TCP fields are given in network-byte order, aka Big Endian
-	string littleEndian = "";
-	for (int i = str.length()-1; i >= 0; i--)
-		littleEndian += str.at(i);
-	return (unsigned int) stoi(littleEndian);
+	unsigned int littleEndian = 0;
+	for (unsigned int i = 0; i < str.length(); i++)
+		littleEndian = insertByte(reverseBits((unsigned char) str.at(i)), littleEndian, i); // reverse bits in each char
+
+	return littleEndian;
 }
 
 // add buffer to input stream, and process the updated input stream
