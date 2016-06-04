@@ -31,12 +31,12 @@ int main( int argc, char *argv[] ) {
 
 	// split into parts to simulate streaming data
 	char *buf;
-	buf = new char [BUFFER_SIZE+1]; // extra character for null terminator
+	buf = new char [BUFFER_SIZE]; // extra character for null terminator
 	for (unsigned int i = 0; i < strlen(str); i+=BUFFER_SIZE) {
-		memset(buf, '\0', BUFFER_SIZE+1); // clear buffer
+		memset(buf, '\0', BUFFER_SIZE); // clear buffer
 		strncpy(buf, str+i, BUFFER_SIZE);
 		// feed into datagram builder
-		builder.feed(buf);
+		builder.feed(buf, BUFFER_SIZE);
 	}
 
 	TCPDatagram output = *(builder.getDatagram());
