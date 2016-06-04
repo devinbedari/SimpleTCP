@@ -4,10 +4,10 @@ CFLAGS= -g -Wall -Werror -std=c++0x
 
 # Targets
 all: client server
-client: client.o Common.o
-	$(GPP) client.o Common.o -o client.out
-server: server.o Common.o serverFunctions.o
-	$(GPP) server.o Common.o serverFunctions.o -o server.out
+client: client.o Common.o Header.o
+	$(GPP) client.o Common.o Header.o -o client.out
+server: server.o Common.o Header.o
+	$(GPP) server.o Common.o Header.o -o server.out
 client.o:
 	$(GPP) $(CFLAGS) -c client.cpp -o client.o   
 server.o:

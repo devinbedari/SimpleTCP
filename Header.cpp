@@ -8,25 +8,19 @@ void setHeader(uint16_t seq, uint16_t ack, uint16_t winSize, uint16_t flag, Head
 	mod.flags = flag;
 }
 
-uint16_t genRand()
-{
-	return (rand() % 0xFFFF);
-}
+// Generate a random starting sequence number
+uint16_t genRand() 
+{ 
+    return (rand() % 0xFFFF);
+} 
 
-// Wrap around, otherwise show the next value
-uint16_t genNextNum (uint16_t prev)
-{
-	if(prev == 0xFFFF)
-	{
-		return 0x0;
-	}
-	else
-	{
-		return (prev + 1);
-	}
-}
+// Generate the next sequence number for n bytes received
+uint16_t genNextNum (uint16_t prev, uint16_t incBytes) 
+{ 
+	return prev+incBytes;
+} 
 
-void genPacket(char*& packet, Headers& headerVal, char* payload)
+void genPacket(char*& packet, Headers& headerVal, char* payload, unsigned int pktMSS)
 {
 	// Store network byte ordering
 	uint16_t s;
@@ -41,18 +35,18 @@ void genPacket(char*& packet, Headers& headerVal, char* payload)
 	f = htons(headerVal.flags);
 
 	// Malloc the payload
-	packet = new char[strlen(payload)+8];
+	packet = new char[pktMSS + 8];
 	
 	// Copy data to the buffer
-	memset(packet, 0, (strlen(payload)+8));
+	memset(packet, 0, (pktMSS+8));
 	memcpy(packet, &s, sizeof(uint16_t));
 	memcpy((packet+2), &a, sizeof(uint16_t));
 	memcpy((packet+4), &c, sizeof(uint16_t));
 	memcpy((packet+6), &f, sizeof(uint16_t));
-	strncpy((packet+8), payload, strlen(payload));
+	strncpy((packet+8), payload, pktMSS);
 }
 
-void parsePacket(char*& packet, Headers& headerVal, char*& payload)
+void parsePacket(char* packet, Headers& headerVal, char*& payload, unsigned int pktMSS)
 {
 	// Store network byte ordering
 	uint16_t s;
@@ -61,7 +55,7 @@ void parsePacket(char*& packet, Headers& headerVal, char*& payload)
 	uint16_t f;
 
 	// Copy over the network byte order
-	memcpy(&s, packet, sizeof(uint16_t));
+	memcpy(&s, ( packet ), sizeof(uint16_t));
 	memcpy(&a, (packet+2), sizeof(uint16_t));
 	memcpy(&c, (packet+4), sizeof(uint16_t));
 	memcpy(&f, (packet+6), sizeof(uint16_t));
@@ -73,13 +67,13 @@ void parsePacket(char*& packet, Headers& headerVal, char*& payload)
 	headerVal.flags = ntohs(f);
 
 	// Copy over the payload
-	payload = new char[strlen(packet+8)];
-	strcpy(payload, packet+8);
+	payload = new char[pktMSS];
+	strncpy(payload, packet+8, pktMSS);
 }
 
-void getFlags(uint16_t flag, bool &ACK, bool &SYN, bool &FIN)
+void getFlags(uint16_t flag, bool &ACKFlag, bool &SYNFlag, bool &FINFlag)
 {
-	ACK = flag & (0x0001);
-	SYN = flag & (0x0002);
-	FIN = flag & (0x0004);
+	ACKFlag = flag & ACK;
+	SYNFlag = flag & SYN;
+	FINFlag = flag & FIN;
 }

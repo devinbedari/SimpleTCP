@@ -18,8 +18,9 @@
 
 // User defined headers
 #include "Common.h"
-#include "TCPDatagram.h"
-#include "TCPDatagramBuilder.h"
+#include "Header.h"
+//#include "TCPDatagram.h"
+//#include "TCPDatagramBuilder.h"
 
 using namespace std;
 
@@ -66,7 +67,7 @@ int main ( int argc, char *argv[] )
     socklen_t sizeClient;                       // Size of client address in bytes
     
     // Parse the input
-    parse(argc, argv, hostName, port);
+    parse(argc, argv, hostName, port, hostDir);
 
     // Grab the socket descriptor              
     initializeSocketServer(hostName, port, &udpSocket);
@@ -103,77 +104,85 @@ int main ( int argc, char *argv[] )
     // FIN flag
     int fin = 0;
 
-    // Send SYN and ACK:
-
     // Set size of the sizeClient variable
     sizeClient = sizeof clientInfo;
     
     // Buffer to send
     char buf[MSS];
+    char send[MSS];
+
+    // Initalize both to null bytes
+    buf[0] = send[0] = 0;
+
+    // Gen the packet for the data
+    char *packet = NULL;
+    char *incomingData = NULL;
+    char *fileReq = NULL;
 
     // Bytes received
-    int bytesRec;
+    int bytesSent, bytesRec;
     
-    // Grab file to download
-
+    // Generate header information
+    Headers sendHeaders, recvHeaders;
 
     // Listen for incoming requests
     while(!fin)
     {
-        // ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen);
-        if ( ( bytesRec = recvfrom( udpSocket, &buf, MSS, 0, (SocketAddressGen *) &clientInfo, &sizeClient ) ) == -1 )
+        // Get SYN
+        if ( ( bytesRec = recvfrom( udpSocket, &buf, 9, 0, (SocketAddressGen *) &clientInfo, &sizeClient ) ) == -1 )
         {
             cerr << "Could not obtain incoming SYN datagram" << endl;
             continue;
         }
-        // Process packet for SYN
         else
         {
-            // Parse the incoming request
-            TCPDatagramBuilder builder;
-            builder.feed(buf);
-            TCPDatagram output = *(builder.getDatagram());
-            
-            // Check if the SYN flag is on
-            if(output.SYN == 1)
+            // Process packet for SYN
+            parsePacket(buf, recvHeaders, incomingData, bytesRec-8);
+
+
+            // Check connection SYN
+            if((recvHeaders.flags & SYN) == SYN)
             {
-                // Generate SYN/ACK
-                TCPDatagram ackConnection;
+                // Gen the next packet
+                setHeader(genRand(), genNextNum(recvHeaders.seq_no, bytesRec-8), 1, ACK|SYN, sendHeaders);
+                genPacket(packet, sendHeaders, send, 1);
 
-                input.sequenceNum = genRand();
-                input.ackNum = genNextNum(output.sequenceNum, 1);
-                input.windowSize = 5;
-                input.SYN = true;
-                input.ACK = true;
-                input.data = "";
-                string synackPacket = input.toString();
-
-                // Store the number of bytes sent
-                int bytesSent;
-                
-                // Send SYN/ACK
-                if( (bytesSent = (sendto(udpSocket, synackPacket.c_str(), synackPacket.length(), 0, (SocketAddressGen *)& clientInfo, sizeClient ))) == -1)
+                // Send responding SYN/ACK
+                if( ( bytesSent = ( sendto(udpSocket, packet, 9, 0, (SocketAddressGen *)& clientInfo, sizeClient) ) ) == -1)
                 {
-                    cerr << "Could not send SYN/ACK" << endl;
+                    // Request resend after timeout
+                    cerr << "Couldn't send the response ACK" << endl;
                     continue;
                 }
-                // Grab ACK + filename
                 else
                 {
-                    builder.feed(buf);
-                    output = *(builder.getDatagram());
+                    // Receive ACK+fileRequest
+                    if ( ( bytesRec = recvfrom( udpSocket, &buf, MSS, 0, (SocketAddressGen *) &clientInfo, &sizeClient ) ) == -1 )
+                    {
+                        cerr << "Handshake could not be established. " << endl;
+                    }
+                    else
+                    {
+                        // Free incoming data for reuse
+                        delete incomingData;
+                        incomingData = NULL;
 
+                        // Parse incoming packet
+                        parsePacket(buf, recvHeaders, fileReq, bytesRec-7);
+
+                        // Double loop here
+                        
+                    }
                 }
             }
             else
             {
-                cerr << "Connection was not established. No SYN was initiated." << std::endl;
-                continue;
-            }
+                cerr << "No syn established; closing connection." << endl;
+                fin = 1;
+            }              
         }
     }
 
     // Close the connection
     closeSocketServer(&udpSocket);
-    cout << endl << "Success!";
 }
