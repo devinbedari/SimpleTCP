@@ -28,12 +28,12 @@ public:
 	// Constructor to initialize a base datagram
 	TCPDatagramBuilder(TCPDatagram* datagram);
 	// Constructor with an initial string to parse
-	TCPDatagramBuilder(char* initialString);
+	TCPDatagramBuilder(char* initialString, int n);
 	// Destructor
 	~TCPDatagramBuilder();
 
 	// add buffer to input stream and process
-	void feed(char* buffer);
+	void feed(char* buffer, int n);
 
 	TCPDatagram* getDatagram();
 	bool isComplete();

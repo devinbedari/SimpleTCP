@@ -18,8 +18,8 @@ TCPDatagramBuilder::TCPDatagramBuilder(TCPDatagram* datagram) {
 }
 
 // Constructor with an initial string to parse
-TCPDatagramBuilder::TCPDatagramBuilder(char* initialString) {
-	this->feed(initialString);
+TCPDatagramBuilder::TCPDatagramBuilder(char* initialString, int n) {
+	this->feed(initialString, n);
 }
 
 unsigned int TCPFieldToUInt (string str) {
@@ -31,8 +31,8 @@ unsigned int TCPFieldToUInt (string str) {
 }
 
 // add buffer to input stream, and process the updated input stream
-void TCPDatagramBuilder::feed(char* buffer) {
-	this->currentString += buffer;
+void TCPDatagramBuilder::feed(char* buffer, int n) {
+	this->currentString.append(buffer, n);
 	this->process();
 }
 
