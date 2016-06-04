@@ -8,7 +8,32 @@ using namespace std;
 
 const int BUFFER_SIZE = 5;
 
+const int NUM_BYTES = 2;
+
+unsigned char reverseBits(unsigned char x) {
+
+	unsigned char bigEndian = 0;
+	for (int i = 0; i < 8; i++) // move through the bits of x left-to-right
+		bigEndian = (bigEndian << 1) | ((x >> i) & 1); // shift bigEndian left by one, and tack on the next bit of x to the right
+
+	return bigEndian;
+}
+
+unsigned char extractChar(unsigned int x, int pos) {
+	return (unsigned char) (x >> (pos*8));
+}
+
 int main( int argc, char *argv[] ) {
+
+	unsigned int test = 9294810;
+	string bla = "";
+	for (int i = 0; i < NUM_BYTES; i++) {
+		bla += (char) reverseBits(extractChar(test, i));
+		cout << (unsigned int) reverseBits(extractChar(test, i)) << endl;
+	}
+
+	for (int i = 0; i < NUM_BYTES; i++)
+		cout << (unsigned int) ((unsigned char) bla.at(i)) << endl;
 
 	TCPDatagram input;
 
