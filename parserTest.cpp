@@ -20,6 +20,11 @@ int main( int argc, char *argv[] ) {
 
 	string raw = input.toString();
 	raw += "world"; // give some excess
+
+	cout << "header bytes: ";
+	for (int i = 0; i < 8; i++) cout << (unsigned int) ((unsigned char) raw.at(i)) << " ";
+	cout << endl;
+
 	cout << "Input Stream: " << raw << endl;
 
 	// convert to c string

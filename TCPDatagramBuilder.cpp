@@ -29,27 +29,10 @@ TCPDatagramBuilder::TCPDatagramBuilder(string initialString) : TCPDatagramBuilde
 	this->feed(initialString);
 }
 
-unsigned char reverseBits(unsigned char x) {
-
-	unsigned char bigEndian = 0;
-	for (int i = 0; i < 8; i++) // move through the bits of x left-to-right
-		bigEndian = (bigEndian << 1) | ((x >> i) & 1); // shift bigEndian left by one, and tack on the next bit of x to the right
-
-	return bigEndian;
-}
-
-// insert byte into a certain position in an int
-unsigned int insertByte(unsigned char c, unsigned int x, int pos) {
-	return x | (c << (pos*8));
-}
-
-unsigned int TCPFieldToUInt (string str) {
-	// first reverse the chars, because TCP fields are given in network-byte order, aka Big Endian
-	unsigned int littleEndian = 0;
-	for (unsigned int i = 0; i < str.length(); i++)
-		littleEndian = insertByte(reverseBits((unsigned char) str.at(i)), littleEndian, i); // reverse bits in each char
-
-	return littleEndian;
+uint16_t TCPFieldToUInt (string str) {
+	uint16_t networkOrder = 0;
+	memcpy(&networkOrder, str.c_str(), sizeof(uint16_t));
+	return ntohs(networkOrder);
 }
 
 // add buffer to input stream, and process the updated input stream
@@ -101,11 +84,11 @@ void TCPDatagramBuilder::process()  {
 			if (this->currentString.length() < 2) break; // incomplete field, can't parse it yet
 
 			{
-				unsigned int flags = TCPFieldToUInt(this->currentString.substr(0,2));
+				uint16_t flags = TCPFieldToUInt(this->currentString.substr(0,2));
 
-				this->datagram->ACK = !!(flags & 0b00100000);
-				this->datagram->SYN = !!(flags & 0b01000000);
-				this->datagram->FIN = !!(flags & 0b10000000);
+				this->datagram->ACK = !!(flags & (1 << 13));
+				this->datagram->SYN = !!(flags & (1 << 14));
+				this->datagram->FIN = !!(flags & (1 << 15));
 				this->currentString = this->currentString.substr(2); // finished parsing the field, remove it from the input stream
 			}
 

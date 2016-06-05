@@ -1,44 +1,31 @@
 #pragma once
 
 #include <string>
+#include <arpa/inet.h>
 
 using namespace std;
 
 const int FIELD_SIZE = 2; // for this project, tcp fields are 2 bytes
 
 struct TCPDatagram {
-	unsigned int sequenceNum;
-	unsigned int ackNum;
-	unsigned int windowSize;
+	uint16_t sequenceNum = 0;
+	uint16_t ackNum = 0;
+	uint16_t windowSize = 0;
 
 	// flags
-	bool ACK; // Indicates that there the value of Acknowledgment Number field is valid
-	bool SYN; //Synchronize sequence numbers (TCP connection establishment)
-	bool FIN; // No more data from sender (TCP connection termination)
+	bool ACK = false; // Indicates that there the value of Acknowledgment Number field is valid
+	bool SYN = false; //Synchronize sequence numbers (TCP connection establishment)
+	bool FIN = false; // No more data from sender (TCP connection termination)
 
-	string data;
+	string data = "";
 
-	unsigned char reverseBits(unsigned char x) {
-
-		unsigned char bigEndian = 0;
-		for (int i = 0; i < 8; i++) // move through the bits of x left-to-right
-			bigEndian = (bigEndian << 1) | ((x >> i) & 1); // shift bigEndian left by one, and tack on the next bit of x to the right
-
-		return bigEndian;
-	}
-
-	// extract a byte from a certain position in an int
-	unsigned char extractByte(unsigned int x, int pos) {
-		return (unsigned char) (x >> (pos*8));
-	}
-
-	string intToTCPField(int x) {
-
-		string bigEndian = "";
-		for (int i = 0; i < FIELD_SIZE; i++)
-			bigEndian += (char) reverseBits(extractByte(x, i)); // reverse bits in char, then append to RIGHT side, so char order is reversed too
-
-		return bigEndian;
+	string intToTCPField(uint16_t x) {
+		uint16_t networkOrdered = htons(x);
+		string str = "";
+		char charAr[2] = {0,0};
+		memcpy(charAr, &networkOrdered, sizeof(uint16_t));
+		str.append(charAr, 2);
+		return str;
 	}
 
 	string toString() {
@@ -48,10 +35,10 @@ struct TCPDatagram {
 		str += intToTCPField(ackNum);
 		str += intToTCPField(windowSize);
 
-		int flags = 0;
-		flags |= ACK << 5;
-		flags |= SYN << 6;
-		flags |= FIN << 7;
+		uint16_t flags = 0;
+		flags |= ACK << 13;
+		flags |= SYN << 14;
+		flags |= FIN << 15;
 		str += intToTCPField(flags);
 
 		str += data;
