@@ -177,12 +177,12 @@ int main ( int argc, char *argv[] )
                         delete incomingData;
                         incomingData = NULL;
 
-                        cerr << "Received " << bytesRec << " bytes." << endl;
+                        // cerr << "Received " << bytesRec << " bytes." << endl;
 
                         // Generate the file location
                         parsePacket(buf, recvHeaders, fileReq, bytesRec-8);
                         fileLocation += hostDir;
-                        cerr << "File Directory: " << fileReq << " " << fileLocation.length() << endl;
+                        // cerr << "File Directory: " << fileReq << " " << fileLocation.length() << endl;
                         if(fileLocation[(fileLocation.length()) - 1] == '/')
                         {
                             fileLocation += fileReq;
@@ -193,7 +193,7 @@ int main ( int argc, char *argv[] )
                             fileLocation += fileReq;
                         }
 
-                        cerr << "Opening file: " << fileLocation << endl;
+                        // cerr << "Opening file: " << fileLocation << endl;
                         int FileDes = open(fileLocation.c_str(), O_RDONLY);
                         if (FileDes == -1)
                         {
@@ -204,8 +204,7 @@ int main ( int argc, char *argv[] )
                         // Open folder and parse data 
                         numOfPackets = splitFile(FileDes, fileData, MSS);
 
-                        // Double loop here
-                        cerr << "The number of packets of the file is: " << numOfPackets << endl;
+                        // Your code goes here
                     }
                 }
             }

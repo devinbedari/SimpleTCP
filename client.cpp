@@ -128,10 +128,10 @@ int main ( int argc, char *argv[] )
 
                 // Gen file request
                 setHeader(recvHeaders.ack_no, genNextNum(recvHeaders.seq_no, bytesRec-8), 1, ACK, sendHeaders);
-                genPacket(packet, sendHeaders, fileName, strlen(fileName));
+                genPacket(packet, sendHeaders, fileName, strlen(fileName)+1);
 
                 // Send ACK for SYN, and also request file
-                if( (bytesSent = (sendto(udpSocket, packet, (strlen(fileName)+8), 0, p->ai_addr, p->ai_addrlen))) == -1 )
+                if( (bytesSent = (sendto(udpSocket, packet, (strlen(fileName)+9), 0, p->ai_addr, p->ai_addrlen))) == -1 )
                 {
                     cerr << "Could not send request for file. " << endl;
                 }
