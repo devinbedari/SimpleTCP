@@ -78,13 +78,15 @@ int main ( int argc, char *argv[] )
     // Initialize the connection
     initializeSocketClient(hostName, port, &udpSocket, bindAddress, p);
     
+    //To close the while loop
+    // int fin = 0;
+
     // Buffer to send
     char buf[MSS];
     char send[MSS];
 
     // Initalize both to null bytes
     buf[0] = send[0] = 0;
-
 
     // Bytes received
     int bytesSent, bytesRec;
@@ -135,11 +137,7 @@ int main ( int argc, char *argv[] )
                 }
                 else
                 {
-                    // Two loops here
-                    while(true)
-                    {
-                        
-                    }
+
                 }
 
             }

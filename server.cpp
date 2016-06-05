@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <sstream>
 #include <csignal>
+#include <string>
 
 // Kernel Includes
 #include <sys/socket.h>
@@ -19,6 +20,7 @@
 // User defined headers
 #include "Common.h"
 #include "Header.h"
+#include "serverFunctions.h"
 //#include "TCPDatagram.h"
 //#include "TCPDatagramBuilder.h"
 
@@ -26,6 +28,7 @@ using namespace std;
 
 // Define constants 
 const unsigned int MSS = 1032;
+const unsigned int ssthresh = 30720;
 
 // Handles parsing and errors
 void parse( int argcount, char *argval[], char* &host_name, char* &port_n, char* &host_dir)
@@ -103,6 +106,7 @@ int main ( int argc, char *argv[] )
 
     // FIN flag
     int fin = 0;
+    int numOfPackets = 0;
 
     // Set size of the sizeClient variable
     sizeClient = sizeof clientInfo;
@@ -118,6 +122,10 @@ int main ( int argc, char *argv[] )
     char *packet = NULL;
     char *incomingData = NULL;
     char *fileReq = NULL;
+
+    // Stores file location, as well as file data
+    string fileLocation = "";
+    char **fileData;
 
     // Bytes received
     int bytesSent, bytesRec;
@@ -139,6 +147,8 @@ int main ( int argc, char *argv[] )
             // Process packet for SYN
             parsePacket(buf, recvHeaders, incomingData, bytesRec-8);
 
+            //cout << "Sending data packet " << recvHeaders.seq_no << " " << recvHeaders.cwnd << " " << ssthresh;
+            //cout << "Receiving ACK packet " << sendHeaders.ack_no;
 
             // Check connection SYN
             if((recvHeaders.flags & SYN) == SYN)
@@ -167,11 +177,35 @@ int main ( int argc, char *argv[] )
                         delete incomingData;
                         incomingData = NULL;
 
-                        // Parse incoming packet
-                        parsePacket(buf, recvHeaders, fileReq, bytesRec-7);
+                        cerr << "Received " << bytesRec << " bytes." << endl;
+
+                        // Generate the file location
+                        parsePacket(buf, recvHeaders, fileReq, bytesRec-8);
+                        fileLocation += hostDir;
+                        cerr << "File Directory: " << fileReq << " " << fileLocation.length() << endl;
+                        if(fileLocation[(fileLocation.length()) - 1] == '/')
+                        {
+                            fileLocation += fileReq;
+                        }
+                        else
+                        {
+                            fileLocation += '/';
+                            fileLocation += fileReq;
+                        }
+
+                        cerr << "Opening file: " << fileLocation << endl;
+                        int FileDes = open(fileLocation.c_str(), O_RDONLY);
+                        if (FileDes == -1)
+                        {
+                            cerr << "Fatal Error: Could not opend file. Are you sure you have the right permissions?" << endl;
+                            exit(0);
+                        }
+
+                        // Open folder and parse data 
+                        numOfPackets = splitFile(FileDes, fileData, MSS);
 
                         // Double loop here
-                        
+                        cerr << "The number of packets of the file is: " << numOfPackets << endl;
                     }
                 }
             }

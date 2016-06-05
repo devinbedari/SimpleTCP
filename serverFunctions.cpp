@@ -11,7 +11,7 @@ unsigned int getFileSize(int inFileDes)
 }
 
 // Splits the file descriptor (fd) into an array of cstrings; returns number of packets split
-int splitFile(int fd, char** &splitBuffer, char* headers, unsigned int packetSplitValue)
+int splitFile(int fd, char** &splitBuffer, unsigned int packetSplitValue)
 {
 	// Flag to indicate EOF
 	int flag = 1;
@@ -37,7 +37,7 @@ int splitFile(int fd, char** &splitBuffer, char* headers, unsigned int packetSpl
 
 		// Assign a size to store the packetSplitValue characters, and headers
 		splitBuffer[i] = new char [pktSize+8];
-		memcpy(splitBuffer[i], headers, 8*sizeof(char));
+		memset(splitBuffer[i], 0, 8*sizeof(char));
 		unsigned int check = read(fd, splitBuffer[i]+8, pktSize);
 
 		// Check the return value

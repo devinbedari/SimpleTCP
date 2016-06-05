@@ -11,13 +11,14 @@ void setHeader(uint16_t seq, uint16_t ack, uint16_t winSize, uint16_t flag, Head
 // Generate a random starting sequence number
 uint16_t genRand() 
 { 
-    return (rand() % 0xFFFF);
+	srand(time(NULL));
+    return (rand() % 0x7800);
 } 
 
 // Generate the next sequence number for n bytes received
 uint16_t genNextNum (uint16_t prev, uint16_t incBytes) 
 { 
-	return prev+incBytes;
+	return (prev+incBytes % 0x7800);
 } 
 
 void genPacket(char*& packet, Headers& headerVal, char* payload, unsigned int pktMSS)
