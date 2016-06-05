@@ -1,4 +1,5 @@
 #include "serverFunctions.h"
+#include "TCPDatagram.h"
 
 // Gets buffer size
 unsigned int getFileSize(int inFileDes)
@@ -11,63 +12,46 @@ unsigned int getFileSize(int inFileDes)
 }
 
 // Splits the file descriptor (fd) into an array of cstrings; returns number of packets split
-int splitFile(int fd, char** &splitBuffer, unsigned int packetSplitValue)
+int splitFile(int fd, TCPDatagram* &packets, unsigned int maxPacketSize)
 {
-	// Flag to indicate EOF
-	int flag = 1;
-
 	// Grab the fileSize
 	unsigned int fileSize = getFileSize(fd);
 
+	int maxDataSize = maxPacketSize-8; // subtract 8 bytes for header
+
 	// Grab number of packets to split
-	unsigned int splitNumber = (fileSize/packetSplitValue) + 1; 
+	unsigned int splitNumber = (fileSize/maxDataSize) + 1; 
 
-	// Assign an array of packets of packetSplitValue size
-	splitBuffer = new char* [splitNumber];
+	// Assign an array of packets of maxDataSize size
+	packets = new TCPDatagram[splitNumber];
 
-	// Packet incrementer
-	unsigned int i = 0;
+	char* temp = new char[maxDataSize];
+
 	// Read until the end of the descriptor
-	do
-	{
-		// Calculate bytes remaining
-		unsigned int remaining = (fileSize - (i*packetSplitValue));
-		// What is the packet size?
-		unsigned int  pktSize = (remaining > packetSplitValue) ? packetSplitValue : remaining;
+	for (unsigned int i = 0; i < splitNumber; i++) {
 
-		// Assign a size to store the packetSplitValue characters, and headers
-		splitBuffer[i] = new char [pktSize+8];
-		memset(splitBuffer[i], 0, 8*sizeof(char));
-		unsigned int check = read(fd, splitBuffer[i]+8, pktSize);
+		unsigned int dataSize = i*maxDataSize < fileSize ? maxDataSize : fileSize-(i*maxDataSize);
+
+		// Assign a size to store the maxDataSize characters, and headers
+		memset(temp, 0, sizeof(char)*dataSize);
+
+		unsigned int bytesRead = read(fd, temp, dataSize);
+
+		packets[i].data.append(temp, bytesRead);
+		packets[i].windowSize = bytesRead;
+		std::cout << "file read: " << temp << std::endl;
 
 		// Check the return value
-		if(check > 0)
-		{
-			// Seek forward by packetSplitValue bytes 
-			if (lseek(fd, (i+1)*pktSize, SEEK_DATA) == -1)
-			{
-				std::cerr << "Fatal Error: Could not migrate to next sector" << std::endl;
-				exit(0);
-			}
-		}
-		// Error in reaad
-		else
-		{
+		if(bytesRead <= 0) {
 			std::cerr << "Fatal Error: Could not read from file descriptor" << std::endl;
 			exit(0);
 		}
- 		
- 		// Assign next packet
-		i++;
+	}
 
-		// Stopping condition
-		if(pktSize != packetSplitValue)
-			flag = 0;
-
-	} while(flag);
+	delete temp;
 
 	// Return number of packets
-	return i;
+	return splitNumber;
 }
 
 /*

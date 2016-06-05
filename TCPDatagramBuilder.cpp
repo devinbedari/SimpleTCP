@@ -6,6 +6,8 @@ using namespace std;
 TCPDatagramBuilder::TCPDatagramBuilder() {
 	this->datagram = new TCPDatagram();
 	this->currentState = SEQ_NUM;
+	this->complete = false;
+	this->currentString = "";
 }
 
 // Destructor
@@ -17,9 +19,14 @@ TCPDatagramBuilder::TCPDatagramBuilder(TCPDatagram* datagram) {
 	this->datagram = datagram;
 }
 
-// Constructor with an initial string to parse
-TCPDatagramBuilder::TCPDatagramBuilder(char* initialString, int n) {
+// Constructor with an initial string to parse, remember to call default constructor
+TCPDatagramBuilder::TCPDatagramBuilder(char* initialString, int n) : TCPDatagramBuilder::TCPDatagramBuilder() {
 	this->feed(initialString, n);
+}
+
+// Constructor with an initial string to parse, remember to call default constructor
+TCPDatagramBuilder::TCPDatagramBuilder(string initialString) : TCPDatagramBuilder::TCPDatagramBuilder() {
+	this->feed(initialString);
 }
 
 unsigned char reverseBits(unsigned char x) {
@@ -46,6 +53,11 @@ unsigned int TCPFieldToUInt (string str) {
 }
 
 // add buffer to input stream, and process the updated input stream
+void TCPDatagramBuilder::feed(string buffer) {
+	this->currentString += buffer;
+	this->process();
+}
+
 void TCPDatagramBuilder::feed(char* buffer, int n) {
 	this->currentString.append(buffer, n);
 	this->process();

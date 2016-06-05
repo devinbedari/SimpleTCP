@@ -21,13 +21,12 @@
 #include "Common.h"
 #include "Header.h"
 #include "serverFunctions.h"
-//#include "TCPDatagram.h"
-//#include "TCPDatagramBuilder.h"
+#include "TCPDatagram.h"
+#include "TCPDatagramBuilder.h"
 
 using namespace std;
 
 // Define constants 
-const unsigned int MSS = 1032;
 const unsigned int ssthresh = 30720;
 
 // Handles parsing and errors
@@ -125,7 +124,7 @@ int main ( int argc, char *argv[] )
 
     // Stores file location, as well as file data
     string fileLocation = "";
-    char **fileData;
+    TCPDatagram* packets;
 
     // Bytes received
     int bytesSent, bytesRec;
@@ -201,10 +200,16 @@ int main ( int argc, char *argv[] )
                             exit(0);
                         }
 
-                        // Open folder and parse data 
-                        numOfPackets = splitFile(FileDes, fileData, MSS);
+                        // Open folder and package the file into TCP packets
+                        numOfPackets = splitFile(FileDes, packets, MSS);
 
                         // Your code goes here
+                        // ty Smallberg
+
+                        for (int i = 0; i < numOfPackets; i++) {
+                            string str = packets[i].toString();
+                            sendto(udpSocket, str.c_str(), str.length(), 0, (SocketAddressGen *)& clientInfo, sizeClient);
+                        }
                     }
                 }
             }

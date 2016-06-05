@@ -7,5 +7,7 @@
 #include <unistd.h>
 #include <cstring>
 
+#include "TCPDatagram.h"
+
 unsigned int getFileSize(int inFileDes);
-int splitFile(int fd, char** &splitBuffer, unsigned int packetSplitValue);
+int splitFile(int fd, TCPDatagram* &packets, unsigned int maxPacketSize);

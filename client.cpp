@@ -17,11 +17,10 @@
 // User defined headers
 #include "Common.h"
 #include "Header.h"
+#include "TCPDatagram.h"
+#include "TCPDatagramBuilder.h"
 
 using namespace std;
-
-// Define constants 
-const unsigned int MSS = 1032;
 
 typedef struct addrinfo AddressInfo;
 
@@ -77,7 +76,7 @@ int main ( int argc, char *argv[] )
 
     // Initialize the connection
     initializeSocketClient(hostName, port, &udpSocket, bindAddress, p);
-    
+
     //To close the while loop
     // int fin = 0;
 
@@ -137,7 +136,22 @@ int main ( int argc, char *argv[] )
                 }
                 else
                 {
+                    while((bytesRec = (recvfrom(udpSocket, &buf, MSS, 0, (SocketAddressGen *) &serverInfo, &sizeServer ))) > 0 ) {
+                        cout << "BYTES REC: " << bytesRec << endl;
+                        TCPDatagramBuilder* builder = new TCPDatagramBuilder(buf, bytesRec);
 
+                        if (builder->isComplete()) {
+                            cout << "sequence num: " << builder->getDatagram()->sequenceNum << endl;
+                            cout << "ack num: " << builder->getDatagram()->ackNum << endl;
+                            cout << "windows size: " << builder->getDatagram()->windowSize << endl;
+                            cout << "------------------DATA-------------------" << endl;
+                            cout << builder->getDatagram()->data << endl;
+                        } else {
+                            cout << "PACKET INCOMPLETE" << endl;
+                        }
+
+                        delete builder;
+                    }
                 }
 
             }
