@@ -53,36 +53,3 @@ int splitFile(int fd, TCPDatagram* &packets, unsigned int maxPacketSize)
 	// Return number of packets
 	return splitNumber;
 }
-
-/*
-// Debugging Only: Unit test
-using namespace std;
-
-// Unit Test: comment out when done
-int main(int argc, char const *argv[])
-{
-	int FileDes = open(argv[1], O_RDONLY);
-	if (FileDes == -1)
-	{
-		cerr << "Fatal Error: Could not opend file. Are you sure you have the right permissions?" << endl;
-		exit(0);
-	}
-
-	// Buffer to store packets
-	char **buf;
-	
-	// Generate "Header"
-	char hd[8];
-	strcpy(hd,"hellooo");
-	hd[7] = 'o';
-
-	unsigned int iterator = splitFile(FileDes, buf, 10, hd);
-	
-	for (int j = 0; j < iterator ; j++)
-	{
-		cout << "Packet " << j << ": " << endl << buf[j] << endl;
-	}
-
-	return 0;
-}
-*/

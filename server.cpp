@@ -74,35 +74,6 @@ int main ( int argc, char *argv[] )
     // Grab the socket descriptor              
     initializeSocketServer(hostName, port, &udpSocket);
 
-    /*
-    // Debugging Only: From Beej Network Programming Guide
-    // Set size of the sizeClient variable
-    sizeClient = sizeof clientInfo;         
-    char buf[30];
-    // memset(&buf, 0, sizeof(buf));   // Zero out the hints
-    int bytesRec;
-    int flag = 1;
-    cout << "Socket number: " << udpSocket << endl;
-
-    // Test get datagram
-    while(flag)
-    {
-        // Gets datagram
-        // ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen);
-        if ( ( bytesRec = recvfrom( udpSocket, &buf, sizeof(buf), 0, (SocketAddressGen *) &clientInfo, &sizeClient ) ) == -1 )
-        {
-            cerr << "Cannot receive the datagram";
-            break;
-        }
-        else
-        {
-            printf("listener: packet is %d bytes long\n", bytesRec);
-            buf[bytesRec] = '\0';
-            cout << "Listener: packet contains: " << buf << endl;
-        }
-    }
-    */ 
-
     // FIN flag
     int fin = 0;
     int numOfPackets = 0;
