@@ -95,17 +95,18 @@ void sendPackets() {
 
     int packetsSent = 0;
     for (list<TCPDatagram>::iterator iter = packetQueue.begin(); iter != packetQueue.end(); ++iter) {
-        (*iter).ackNum = currentAckNum; // assign ack number just before sending
-        string str = (*iter).toString();
+        TCPDatagram packet = *iter;
+        packet.ackNum = currentAckNum; // assign ack number just before sending
+        string str = packet.toString();
 
         if (sendto(udpSocket, str.c_str(), str.length(), 0, (SocketAddressGen *)& clientInfo, sizeClient) < 0) {
             // Request resend after timeout
             cerr << "Couldn't send the response ACK" << endl;
             break; // don't continue because we don't want to send out of order
         }
-        int expectedAckNum = nextSeqNum(*iter);
+        int expectedAckNum = nextSeqNum(packet);
         expectedAckNums.insert(expectedAckNum); // add sequence number to set
-        cout << "sent sequence num: " << (*iter).sequenceNum << endl;
+        cout << "sent sequence num: " << packet.sequenceNum << endl;
         if (++packetsSent > controlWindow) break;
     }
 }
@@ -197,7 +198,7 @@ void packetReceived (TCPDatagram packet) {
                     fin.FIN = true;
                     fin.ACK = true;
                     fin.windowSize = 0;
-                    assignSequenceNum(fin);
+                    assignSequenceNum(packet);
                     packetQueue.push_back(fin);
 
                     sendPackets();
