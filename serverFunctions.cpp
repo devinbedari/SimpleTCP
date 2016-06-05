@@ -39,7 +39,7 @@ int splitFile(int fd, TCPDatagram* &packets, unsigned int maxPacketSize)
 
 		packets[i].data.append(temp, bytesRead);
 		packets[i].windowSize = bytesRead;
-		std::cout << "file read: " << temp << std::endl;
+//		std::cout << "file read: " << temp << std::endl;
 
 		// Check the return value
 		if(bytesRead <= 0) {

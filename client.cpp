@@ -88,9 +88,9 @@ int nextSeqNum(TCPDatagram packet) {
 }
 
 // assigns a sequence number
-void assignSequenceNum (TCPDatagram packet) {
+void assignSequenceNum (TCPDatagram &packet) {
     packet.sequenceNum = currentSeqNum;
-    currentSeqNum += nextSeqNum(packet);
+    currentSeqNum = nextSeqNum(packet);
 }
 
 void sendPackets() {
@@ -98,6 +98,7 @@ void sendPackets() {
 
     int packetsSent = 0;
     for (list<TCPDatagram>::iterator iter = packetQueue.begin(); iter != packetQueue.end(); ++iter) {
+        (*iter).ackNum = currentAckNum; // assign ack number just before sending
         string str = (*iter).toString();
 
         if (sendto(udpSocket, str.c_str(), str.length(), 0, p->ai_addr, p->ai_addrlen) < 0) {
@@ -107,12 +108,15 @@ void sendPackets() {
         }
         int expectedAckNum = nextSeqNum(*iter);
         expectedAckNums.insert(expectedAckNum); // add sequence number to set
+        cout << "sent sequence num: " << (*iter).sequenceNum << endl;
         if (++packetsSent > controlWindow) break;
     }
 }
 
 void packetReceived (TCPDatagram packet) {
-/*
+
+    cout << "received ack num: " << packet.ackNum << endl;
+
     // if connection is open, and ack number doesn't match any of the expected ack numbers, drop the packet
     if (currentState != START && expectedAckNums.count(packet.ackNum) == 0) {
         return;
@@ -122,10 +126,9 @@ void packetReceived (TCPDatagram packet) {
     while (!packetQueue.empty() && packet.ACK && packet.ackNum > packetQueue.front().sequenceNum) {
         packetQueue.pop_front(); // packet acknowledged, removed from queue
     }
-*/
-    // for now, ignore sequence numbers, and just assume all sent packets acknowledged
-    while (!packetQueue.empty()) {
-        packetQueue.pop_front(); // packet acknowledged, removed from queue
+
+    if (currentAckNum == packet.sequenceNum) {
+        currentAckNum = nextSeqNum(packet);
     }
 
     switch (currentState) {
@@ -138,7 +141,6 @@ void packetReceived (TCPDatagram packet) {
                 packet.SYN = false;
                 packet.FIN = false;
                 packet.ACK = true;
-                packet.ackNum = currentAckNum;
                 packet.data = fileName;
                 packet.windowSize = packet.data.length();
                 assignSequenceNum(packet);
@@ -154,7 +156,7 @@ void packetReceived (TCPDatagram packet) {
             if (packet.FIN) {
                 currentState = FIN_RECEIVED;
             } else {
-                cout << "client receieved data: " << packet.data << endl;
+//                cout << "client receieved data: " << packet.data << endl;
                 // wait until timeout to send ack
             }
             break;
