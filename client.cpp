@@ -13,6 +13,8 @@
 #include <fcntl.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <unordered_set>
+#include <list>
 
 // User defined headers
 #include "Common.h"
@@ -23,6 +25,28 @@
 using namespace std;
 
 typedef struct addrinfo AddressInfo;
+
+// Variable declarations
+char* hostName;                             // IP or Domain that we need to connect to 
+char* port;                                 // Port number to open socket
+char* fileName;                             // File requested from server
+int udpSocket;                              // Socket descriptor, and file descriptor
+SocketStorage serverInfo;                   // Incoming client datagram address structures 
+socklen_t sizeServer;                       // Size of client address in bytes
+
+// Generate the address structures
+AddressInfo *bindAddress, *p;
+
+enum TCPConnectionState { START, SYN_SENT, ESTABLISHED, FIN_RECEIVED, CLOSED };
+
+TCPConnectionState currentState = START;
+int currentAckNum = 0;
+int currentSeqNum = 0;
+int packetWindow = 0;
+int controlWindow = 10; // arbitrary value for now
+bool established = false;
+list<TCPDatagram> packetQueue; // queue of packets to send and acknowledge. Sends packets at packetQueue.front() first
+unordered_set<unsigned int> expectedAckNums; // ack numbers that we expect from the client, to ensure the client is sending valid acks
 
 // Handles parsing and errors
 void parse( int argcount, char *argval[], char* &host_name, char* &port_n, char* &fileReq)
@@ -58,103 +82,138 @@ void parse( int argcount, char *argval[], char* &host_name, char* &port_n, char*
     }
 }
 
+// calculates the next sequence number
+int nextSeqNum(TCPDatagram packet) {
+    return packet.sequenceNum + (packet.windowSize > 0 ? packet.windowSize : 1);
+}
+
+// assigns a sequence number
+void assignSequenceNum (TCPDatagram packet) {
+    packet.sequenceNum = currentSeqNum;
+    currentSeqNum += nextSeqNum(packet);
+}
+
+void sendPackets() {
+    expectedAckNums.clear(); // clear set
+
+    int packetsSent = 0;
+    for (list<TCPDatagram>::iterator iter = packetQueue.begin(); iter != packetQueue.end(); ++iter) {
+        string str = (*iter).toString();
+
+        if (sendto(udpSocket, str.c_str(), str.length(), 0, p->ai_addr, p->ai_addrlen) < 0) {
+            // Request resend after timeout
+            cerr << "Couldn't send the response ACK" << endl;
+            break; // don't continue because we don't want to send out of order
+        }
+        int expectedAckNum = nextSeqNum(*iter);
+        expectedAckNums.insert(expectedAckNum); // add sequence number to set
+        if (++packetsSent > controlWindow) break;
+    }
+}
+
+void packetReceived (TCPDatagram packet) {
+/*
+    // if connection is open, and ack number doesn't match any of the expected ack numbers, drop the packet
+    if (currentState != START && expectedAckNums.count(packet.ackNum) == 0) {
+        return;
+    }
+
+    // removed all acknowledged packets
+    while (!packetQueue.empty() && packet.ACK && packet.ackNum > packetQueue.front().sequenceNum) {
+        packetQueue.pop_front(); // packet acknowledged, removed from queue
+    }
+*/
+    // for now, ignore sequence numbers, and just assume all sent packets acknowledged
+    while (!packetQueue.empty()) {
+        packetQueue.pop_front(); // packet acknowledged, removed from queue
+    }
+
+    switch (currentState) {
+
+        case SYN_SENT:
+            if (packet.SYN && packet.ACK) {
+                currentAckNum = packet.sequenceNum+1;
+
+                TCPDatagram packet;
+                packet.SYN = false;
+                packet.FIN = false;
+                packet.ACK = true;
+                packet.ackNum = currentAckNum;
+                packet.data = fileName;
+                packet.windowSize = packet.data.length();
+                assignSequenceNum(packet);
+                packetQueue.push_back(packet);
+
+                sendPackets();
+
+                currentState = ESTABLISHED;
+            }
+            break;
+
+        case ESTABLISHED:
+            if (packet.FIN) {
+                currentState = FIN_RECEIVED;
+            } else {
+                cout << "client receieved data: " << packet.data << endl;
+                // wait until timeout to send ack
+            }
+            break;
+
+        case FIN_RECEIVED:
+            // TODO
+            break;
+
+        case CLOSED:
+            // TODO
+            break;
+
+        default:
+            cerr << "Server: unknown state" << endl;
+            exit(0);
+    }
+}
+
 int main ( int argc, char *argv[] )
 {
-    // Variable declarations
-    char* hostName;                             // IP or Domain that we need to connect to 
-    char* port;                                 // Port number to connect to
-    char* fileName;                             // File requested from server
-    int udpSocket;                              // File descriptor for the socket
-    SocketStorage serverInfo;                   // Incoming client datagram address structures 
-    socklen_t sizeServer;                       // Size of client address in bytes
-
-    // Generate the address structures
-    AddressInfo *bindAddress, *p;
-
     // Parse the input
     parse(argc, argv, hostName, port, fileName); 
 
     // Initialize the connection
     initializeSocketClient(hostName, port, &udpSocket, bindAddress, p);
 
-    //To close the while loop
-    // int fin = 0;
+    currentSeqNum = genRand();
 
-    // Buffer to send
+    TCPDatagram packet;
+    packet.SYN = true;
+    packet.FIN = false;
+    packet.ACK = false;
+    packet.windowSize = 0;
+    packet.ackNum = currentAckNum;
+    assignSequenceNum(packet);
+    packetQueue.push_back(packet);
+
+    sendPackets();
+
+    currentState = SYN_SENT;
+
     char buf[MSS];
-    char send[MSS];
 
-    // Initalize both to null bytes
-    buf[0] = send[0] = 0;
+    while (currentState != CLOSED) {
+        int bytesRec;
+        if ( (bytesRec = recvfrom( udpSocket, &buf, MSS, 0, (SocketAddressGen *) &serverInfo, &sizeServer )) > 0 ) {
 
-    // Bytes received
-    int bytesSent, bytesRec;
-    
-    // Get payload
-    char *packet = NULL;
-    char *incomingData = NULL;
-    
-    // Generate header information
-    Headers sendHeaders, recvHeaders;
+            TCPDatagramBuilder* builder = new TCPDatagramBuilder(buf, bytesRec);
 
-    //Generate SYN packet
-    setHeader(genRand(), 0, 0, SYN, sendHeaders);
-    genPacket(packet, sendHeaders, send, 1);
-
-    // Send SYN
-    if( (bytesSent = (sendto(udpSocket, packet, 9, 0, p->ai_addr, p->ai_addrlen))) == -1 )
-    {
-        cerr << "Error in sending SYN" << endl;
-    }
-    else
-    {
-        // Get SYN/ACK
-        if((bytesRec = (recvfrom(udpSocket, &buf, 9, 0, (SocketAddressGen *) &serverInfo, &sizeServer ))) == -1 )
-        {
-            cerr << "Error in getting SYN/ACK" << endl;
-        }
-        else
-        {
-            // Process packet for SYN/ACK
-            parsePacket(buf, recvHeaders, incomingData, bytesRec-8);
-
-            //Send File Request+ACK
-            if ( (recvHeaders.flags & (SYN|ACK)) == (SYN|ACK) )
-            {   
-                //Remove the old packet
-                delete packet;
-                packet = NULL;
-
-                // Gen file request
-                setHeader(recvHeaders.ack_no, genNextNum(recvHeaders.seq_no, bytesRec-8), strlen(fileName), ACK, sendHeaders);
-                genPacket(packet, sendHeaders, fileName, strlen(fileName)+1);
-
-                // Send ACK for SYN, and also request file
-                if( (bytesSent = (sendto(udpSocket, packet, (strlen(fileName)+9), 0, p->ai_addr, p->ai_addrlen))) == -1 )
-                {
-                    cerr << "Could not send request for file. " << endl;
-                }
-                else
-                {
-                    while((bytesRec = (recvfrom(udpSocket, &buf, MSS, 0, (SocketAddressGen *) &serverInfo, &sizeServer ))) > 0 ) {
-                        cout << "BYTES REC: " << bytesRec << endl;
-                        TCPDatagramBuilder* builder = new TCPDatagramBuilder(buf, bytesRec);
-
-                        if (builder->isComplete()) {
-                            cout << "sequence num: " << builder->getDatagram()->sequenceNum << endl;
-                            cout << "ack num: " << builder->getDatagram()->ackNum << endl;
-                            cout << "windows size: " << builder->getDatagram()->windowSize << endl;
-                            cout << "------------------DATA-------------------" << endl;
-                            cout << builder->getDatagram()->data << endl;
-                        } else {
-                            cout << "PACKET INCOMPLETE" << endl;
-                        }
-
-                        delete builder;
-                    }
-                }
-
+            if (builder->isComplete()) {
+                packetReceived(*(builder->getDatagram()));
+            } else {
+                cout << "PACKET INCOMPLETE" << endl;
             }
+
+            delete builder;
+        } else {
+            cerr << "Could not obtain incoming SYN datagram" << endl;
+            continue;
         }
     }
 
