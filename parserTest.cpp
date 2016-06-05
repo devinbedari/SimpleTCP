@@ -25,16 +25,16 @@ int main( int argc, char *argv[] ) {
 	// convert to c string
 	char *str;
 	str = new char[raw.length()];
-	strcpy(str, raw.c_str());
+	memcpy(str, raw.c_str(), sizeof(char)*raw.length());
 
 	TCPDatagramBuilder builder;
 
 	// split into parts to simulate streaming data
 	char *buf;
 	buf = new char [BUFFER_SIZE]; // extra character for null terminator
-	for (unsigned int i = 0; i < strlen(str); i+=BUFFER_SIZE) {
+	for (unsigned int i = 0; i < raw.length(); i+=BUFFER_SIZE) {
 		memset(buf, '\0', BUFFER_SIZE); // clear buffer
-		strncpy(buf, str+i, BUFFER_SIZE);
+		memcpy(buf, str+i, BUFFER_SIZE);
 		// feed into datagram builder
 		builder.feed(buf, BUFFER_SIZE);
 	}
