@@ -6,8 +6,8 @@ CFLAGS= -g -Wall -Werror -std=c++0x
 all: client server
 client: client.o Common.o Header.o TCPDatagramBuilder.o
 	$(GPP) client.o Common.o Header.o TCPDatagramBuilder.o -o client.out
-server: server.o Common.o Header.o serverFunctions.o
-	$(GPP) server.o Common.o Header.o serverFunctions.o -o server.out
+server: server.o Common.o Header.o serverFunctions.o TCPDatagramBuilder.o
+	$(GPP) server.o Common.o Header.o serverFunctions.o TCPDatagramBuilder.o -o server.out
 client.o:
 	$(GPP) $(CFLAGS) -c client.cpp -o client.o   
 server.o:

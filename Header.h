@@ -22,9 +22,9 @@ typedef struct tcpHeader
 // Flag enumerators
 enum
 {
-    ACK = 1,
-    SYN = 2,
-    FIN = 4
+    ACK = 0b100,
+    SYN = 0b010,
+    FIN = 0b001,
 };
 
 void setHeader(uint16_t seq, uint16_t ack, uint16_t winSize, uint16_t flag, Headers &mod);

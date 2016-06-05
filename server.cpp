@@ -16,6 +16,8 @@
 #include <fcntl.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <unordered_set>
+#include <list>
 
 // User defined headers
 #include "Common.h"
@@ -28,6 +30,25 @@ using namespace std;
 
 // Define constants 
 const unsigned int ssthresh = 30720;
+
+// Variable declarations
+char* hostName;                             // IP or Domain that we need to connect to 
+char* port;                                 // Port number to open socket
+char* hostDir;                              // Directory that is being hosted
+int udpSocket;                              // Socket descriptor, and file descriptor
+SocketStorage clientInfo;                   // Incoming client datagram address structures 
+socklen_t sizeClient;                       // Size of client address in bytes
+
+enum TCPConnectionState { START, SYN_RECEIVED, ESTABLISHED, FIN_RECEIVED, CLOSED };
+
+TCPConnectionState currentState = START;
+int currentAckNum = 0;
+int currentSeqNum = 0;
+int packetWindow = 0;
+int controlWindow = 10; // arbitrary value for now
+bool established = false;
+list<TCPDatagram> packetQueue; // queue of packets to send and acknowledge. Sends packets at packetQueue.front() first
+unordered_set<unsigned int> expectedAckNums; // ack numbers that we expect from the client, to ensure the client is sending valid acks
 
 // Handles parsing and errors
 void parse( int argcount, char *argval[], char* &host_name, char* &port_n, char* &host_dir)
@@ -58,137 +79,176 @@ void parse( int argcount, char *argval[], char* &host_name, char* &port_n, char*
     }
 }
 
+// calculates the next sequence number
+int nextSeqNum(TCPDatagram packet) {
+    return packet.sequenceNum + (packet.windowSize > 0 ? packet.windowSize : 1);
+}
+
+// assigns a sequence number
+void assignSequenceNum (TCPDatagram packet) {
+    packet.sequenceNum = currentSeqNum;
+    currentSeqNum += nextSeqNum(packet);
+}
+
+void sendPackets() {
+    expectedAckNums.clear(); // clear set
+
+    int packetsSent = 0;
+    for (list<TCPDatagram>::iterator iter = packetQueue.begin(); iter != packetQueue.end(); ++iter) {
+        string str = (*iter).toString();
+
+        if (sendto(udpSocket, str.c_str(), str.length(), 0, (SocketAddressGen *)& clientInfo, sizeClient) < 0) {
+            // Request resend after timeout
+            cerr << "Couldn't send the response ACK" << endl;
+            break; // don't continue because we don't want to send out of order
+        }
+        int expectedAckNum = nextSeqNum(*iter);
+        expectedAckNums.insert(expectedAckNum); // add sequence number to set
+        if (++packetsSent > controlWindow) break;
+    }
+}
+
+void packetReceived (TCPDatagram packet) {
+/*
+    // if connection is open, and ack number doesn't match any of the expected ack numbers, drop the packet
+    if (currentState != START && expectedAckNums.count(packet.ackNum) == 0) {
+        return;
+    }
+
+    // removed all acknowledged packets
+    while (!packetQueue.empty() && packet.ACK && packet.ackNum > packetQueue.front().sequenceNum) {
+        packetQueue.pop_front(); // packet acknowledged, removed from queue
+    }
+*/
+    // for now, ignore sequence numbers, and just assume all sent packets acknowledged
+    while (!packetQueue.empty()) {
+        packetQueue.pop_front(); // packet acknowledged, removed from queue
+    }
+
+    switch (currentState) {
+
+        case START:
+            if (packet.SYN) {
+                currentAckNum = packet.sequenceNum+1;
+
+                currentSeqNum = genRand();
+
+                TCPDatagram packet;
+                packet.SYN = true;
+                packet.FIN = false;
+                packet.ACK = true;
+                packet.windowSize = 0;
+                packet.ackNum = currentAckNum;
+                assignSequenceNum(packet);
+                packetQueue.push_back(packet);
+
+                sendPackets();
+
+                currentState = SYN_RECEIVED;
+            }
+            break;
+
+        case SYN_RECEIVED:
+            if (packet.FIN) {
+                currentState = FIN_RECEIVED;
+            } else {
+
+                // Generate the file location
+                string fileLocation = "";
+                fileLocation += hostDir;
+                if (fileLocation[fileLocation.length()-1] != '/')
+                    fileLocation += '/'; // append '/' if necessary
+                fileLocation += packet.data;
+
+                // cerr << "Opening file: " << fileLocation << endl;
+                int FileDes = open(fileLocation.c_str(), O_RDONLY);
+                if (FileDes == -1)
+                {
+                    cerr << "Fatal Error: Could not opend file. Are you sure you have the right permissions?" << endl;
+                    exit(0);
+                }
+
+                TCPDatagram* packets;
+
+                // Open folder and package the file into TCP packets
+                int numOfPackets = splitFile(FileDes, packets, MSS);
+
+                for (int i = 0; i < numOfPackets; i++) {
+                    packetQueue.push_back(packets[i]);
+                }
+
+                sendPackets();
+
+                currentState = ESTABLISHED;
+            }
+            break;
+
+        case ESTABLISHED:
+            if (packet.FIN) {
+                currentState = FIN_RECEIVED;
+            } else {
+                if (packetQueue.empty()) {
+                    // no more data, close connection using a FIN packet
+                    TCPDatagram fin;
+                    fin.SYN = false;
+                    fin.FIN = true;
+                    fin.ACK = true;
+                    fin.windowSize = 0;
+                    fin.ackNum = currentAckNum;
+                    assignSequenceNum(fin);
+                    packetQueue.push_back(fin);
+
+                    sendPackets();
+                } else {
+                    // still more packets, continue transmitting
+                    sendPackets();
+                }
+            }
+            break;
+
+        case FIN_RECEIVED:
+            // TODO
+            break;
+
+        case CLOSED:
+            // TODO
+            break;
+
+        default:
+            cerr << "Server: unknown state" << endl;
+            exit(0);
+    }
+}
+
 int main ( int argc, char *argv[] )
 {
-    // Variable declarations
-    char* hostName;                             // IP or Domain that we need to connect to 
-    char* port;                                 // Port number to open socket
-    char* hostDir;                              // Directory that is being hosted
-    int udpSocket;			                    // Socket descriptor, and file descriptor
-    SocketStorage clientInfo;                   // Incoming client datagram address structures 
-    socklen_t sizeClient;                       // Size of client address in bytes
-    
     // Parse the input
     parse(argc, argv, hostName, port, hostDir);
 
     // Grab the socket descriptor              
     initializeSocketServer(hostName, port, &udpSocket);
 
-    // FIN flag
-    int fin = 0;
-    int numOfPackets = 0;
-
     // Set size of the sizeClient variable
     sizeClient = sizeof clientInfo;
-    
-    // Buffer to send
+
     char buf[MSS];
-    char send[MSS];
 
-    // Initalize both to null bytes
-    buf[0] = send[0] = 0;
+    while (currentState != CLOSED) {
+        int bytesRec;
+        if ( (bytesRec = recvfrom( udpSocket, &buf, MSS, 0, (SocketAddressGen *) &clientInfo, &sizeClient )) > 0 ) {
 
-    // Gen the packet for the data
-    char *packet = NULL;
-    char *incomingData = NULL;
-    char *fileReq = NULL;
+            TCPDatagramBuilder* builder = new TCPDatagramBuilder(buf, bytesRec);
 
-    // Stores file location, as well as file data
-    string fileLocation = "";
-    TCPDatagram* packets;
+            if (builder->isComplete()) {
+                packetReceived(*(builder->getDatagram()));
+            } else {
+                cout << "PACKET INCOMPLETE" << endl;
+            }
 
-    // Bytes received
-    int bytesSent, bytesRec;
-    
-    // Generate header information
-    Headers sendHeaders, recvHeaders;
-
-    // Listen for incoming requests
-    while(!fin)
-    {
-        // Get SYN
-        if ( ( bytesRec = recvfrom( udpSocket, &buf, 9, 0, (SocketAddressGen *) &clientInfo, &sizeClient ) ) == -1 )
-        {
+            delete builder;
+        } else {
             cerr << "Could not obtain incoming SYN datagram" << endl;
             continue;
-        }
-        else
-        {
-            // Process packet for SYN
-            parsePacket(buf, recvHeaders, incomingData, bytesRec-8);
-
-            //cout << "Sending data packet " << recvHeaders.seq_no << " " << recvHeaders.cwnd << " " << ssthresh;
-            //cout << "Receiving ACK packet " << sendHeaders.ack_no;
-
-            // Check connection SYN
-            if((recvHeaders.flags & SYN) == SYN)
-            {
-                // Gen the next packet
-                setHeader(genRand(), genNextNum(recvHeaders.seq_no, bytesRec-8), 1, ACK|SYN, sendHeaders);
-                genPacket(packet, sendHeaders, send, 1);
-
-                // Send responding SYN/ACK
-                if( ( bytesSent = ( sendto(udpSocket, packet, 9, 0, (SocketAddressGen *)& clientInfo, sizeClient) ) ) == -1)
-                {
-                    // Request resend after timeout
-                    cerr << "Couldn't send the response ACK" << endl;
-                    continue;
-                }
-                else
-                {
-                    // Receive ACK+fileRequest
-                    if ( ( bytesRec = recvfrom( udpSocket, &buf, MSS, 0, (SocketAddressGen *) &clientInfo, &sizeClient ) ) == -1 )
-                    {
-                        cerr << "Handshake could not be established. " << endl;
-                    }
-                    else
-                    {
-                        // Free incoming data for reuse
-                        delete incomingData;
-                        incomingData = NULL;
-
-                        // cerr << "Received " << bytesRec << " bytes." << endl;
-
-                        // Generate the file location
-                        parsePacket(buf, recvHeaders, fileReq, bytesRec-8);
-                        fileLocation += hostDir;
-                        // cerr << "File Directory: " << fileReq << " " << fileLocation.length() << endl;
-                        if(fileLocation[(fileLocation.length()) - 1] == '/')
-                        {
-                            fileLocation += fileReq;
-                        }
-                        else
-                        {
-                            fileLocation += '/';
-                            fileLocation += fileReq;
-                        }
-
-                        // cerr << "Opening file: " << fileLocation << endl;
-                        int FileDes = open(fileLocation.c_str(), O_RDONLY);
-                        if (FileDes == -1)
-                        {
-                            cerr << "Fatal Error: Could not opend file. Are you sure you have the right permissions?" << endl;
-                            exit(0);
-                        }
-
-                        // Open folder and package the file into TCP packets
-                        numOfPackets = splitFile(FileDes, packets, MSS);
-
-                        // Your code goes here
-                        // ty Smallberg
-
-                        for (int i = 0; i < numOfPackets; i++) {
-                            string str = packets[i].toString();
-                            sendto(udpSocket, str.c_str(), str.length(), 0, (SocketAddressGen *)& clientInfo, sizeClient);
-                        }
-                    }
-                }
-            }
-            else
-            {
-                cerr << "No syn established; closing connection." << endl;
-                fin = 1;
-            }              
         }
     }
 

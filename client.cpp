@@ -98,7 +98,7 @@ int main ( int argc, char *argv[] )
     Headers sendHeaders, recvHeaders;
 
     //Generate SYN packet
-    setHeader(genRand(), 0, 1, SYN, sendHeaders);
+    setHeader(genRand(), 0, 0, SYN, sendHeaders);
     genPacket(packet, sendHeaders, send, 1);
 
     // Send SYN
@@ -126,7 +126,7 @@ int main ( int argc, char *argv[] )
                 packet = NULL;
 
                 // Gen file request
-                setHeader(recvHeaders.ack_no, genNextNum(recvHeaders.seq_no, bytesRec-8), 1, ACK, sendHeaders);
+                setHeader(recvHeaders.ack_no, genNextNum(recvHeaders.seq_no, bytesRec-8), strlen(fileName), ACK, sendHeaders);
                 genPacket(packet, sendHeaders, fileName, strlen(fileName)+1);
 
                 // Send ACK for SYN, and also request file
