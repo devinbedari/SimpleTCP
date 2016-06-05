@@ -86,9 +86,9 @@ void TCPDatagramBuilder::process()  {
 			{
 				uint16_t flags = TCPFieldToUInt(this->currentString.substr(0,2));
 
-				this->datagram->ACK = !!(flags & (1 << 13));
-				this->datagram->SYN = !!(flags & (1 << 14));
-				this->datagram->FIN = !!(flags & (1 << 15));
+				this->datagram->ACK = !!(flags & 0b100);
+				this->datagram->SYN = !!(flags & 0b010);
+				this->datagram->FIN = !!(flags & 0b001);
 				this->currentString = this->currentString.substr(2); // finished parsing the field, remove it from the input stream
 			}
 

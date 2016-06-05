@@ -36,9 +36,9 @@ struct TCPDatagram {
 		str += intToTCPField(windowSize);
 
 		uint16_t flags = 0;
-		flags |= ACK << 13;
-		flags |= SYN << 14;
-		flags |= FIN << 15;
+		if (ACK) flags |= 0b100;
+		if (SYN) flags |= 0b010;
+		if (FIN) flags |= 0b001;
 		str += intToTCPField(flags);
 
 		str += data;
