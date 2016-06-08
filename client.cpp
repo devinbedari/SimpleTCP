@@ -91,7 +91,7 @@ void assignSequenceNum (TCPDatagram &packet) {
     currentSeqNum = nextSeqNum(packet);
 }
 
-uint16_t lastAckSent;
+uint16_t lastAckSent = 1; // start a 1 so first SYN (which has acknum 0) doesn't trigger a "retransmission" print
 
 void sendprint(TCPDatagram packet, bool retransmission) {
     cout << "Sending packet ";
