@@ -37,7 +37,7 @@ socklen_t sizeServer;                       // Size of client address in bytes
 // Generate the address structures
 AddressInfo *bindAddress, *p;
 
-enum TCPConnectionState { START, SYN_SENT, ESTABLISHED, FIN_RECEIVED, CLOSED };
+enum TCPConnectionState { START, SYN_SENT, ESTABLISHED, FIN_SENT, CLOSED };
 
 TCPConnectionState currentState = START;
 int currentAckNum = 0;
@@ -114,12 +114,15 @@ void sendPackets() {
     }
 }
 
+int HARDCODEDTIMEOUT = 0;
+
 void packetReceived (TCPDatagram packet) {
 
     cout << "received ack num: " << packet.ackNum << endl;
 
     // if connection is open, and ack number doesn't match any of the expected ack numbers, drop the packet
     if (currentState != START && expectedAckNums.count(packet.ackNum) == 0) {
+        cout << "ACK MISMATCH" << endl;
         return;
     }
 
@@ -136,7 +139,7 @@ void packetReceived (TCPDatagram packet) {
 
         case SYN_SENT:
             if (packet.SYN && packet.ACK) {
-                currentAckNum = packet.sequenceNum+1;
+                currentAckNum = nextSeqNum(packet);
 
                 TCPDatagram packet;
                 packet.SYN = false;
@@ -155,15 +158,39 @@ void packetReceived (TCPDatagram packet) {
 
         case ESTABLISHED:
             if (packet.FIN) {
-                currentState = FIN_RECEIVED;
+                // send FIN/ACK
+                TCPDatagram fin;
+                fin.SYN = false;
+                fin.FIN = true;
+                fin.ACK = true;
+                fin.windowSize = 0;
+                assignSequenceNum(fin);
+                packetQueue.push_back(fin);
+
+                sendPackets();
+
+                currentState = CLOSED;
             } else {
 //                cout << "client receieved data: " << packet.data << endl;
                 // wait until timeout to send ack
+                if (++HARDCODEDTIMEOUT >= 3) {
+
+                    TCPDatagram finack;
+                    finack.ACK = true;
+                    finack.windowSize = 0;
+                    assignSequenceNum(finack);
+                    packetQueue.push_back(finack);
+
+                    sendPackets();
+                }
             }
             break;
 
-        case FIN_RECEIVED:
-            // TODO
+        // ----------------- IM ACTUALLY NOT SURE HOW CONNECTION FIN WORKS, SO CHECK EVERYTHING BELOW THIS ------------------
+        case FIN_SENT:
+            if (packet.FIN) { // FIN/ACK received
+                currentState = CLOSED;
+            }
             break;
 
         case CLOSED:

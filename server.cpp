@@ -39,7 +39,7 @@ int udpSocket;                              // Socket descriptor, and file descr
 SocketStorage clientInfo;                   // Incoming client datagram address structures 
 socklen_t sizeClient;                       // Size of client address in bytes
 
-enum TCPConnectionState { START, SYN_RECEIVED, ESTABLISHED, FIN_RECEIVED, CLOSED };
+enum TCPConnectionState { START, SYN_RECEIVED, ESTABLISHED, FIN_SENT, CLOSED };
 
 TCPConnectionState currentState = START;
 int currentAckNum = 0;
@@ -117,6 +117,7 @@ void packetReceived (TCPDatagram packet) {
 
     // if connection is open, and ack number doesn't match any of the expected ack numbers, drop the packet
     if (currentState != START && expectedAckNums.count(packet.ackNum) == 0) {
+        cout << "ACK MISMATCH" << endl;
         return;
     }
 
@@ -133,7 +134,7 @@ void packetReceived (TCPDatagram packet) {
 
         case START:
             if (packet.SYN) {
-                currentAckNum = packet.sequenceNum+1;
+                currentAckNum = nextSeqNum(packet);
 
                 currentSeqNum = genRand();
 
@@ -153,7 +154,18 @@ void packetReceived (TCPDatagram packet) {
 
         case SYN_RECEIVED:
             if (packet.FIN) {
-                currentState = FIN_RECEIVED;
+                // send FIN/ACK
+                TCPDatagram fin;
+                fin.SYN = false;
+                fin.FIN = true;
+                fin.ACK = true;
+                fin.windowSize = 0;
+                assignSequenceNum(fin);
+                packetQueue.push_back(fin);
+
+                sendPackets();
+
+                currentState = CLOSED;
             } else {
 
                 // Generate the file location
@@ -184,12 +196,25 @@ void packetReceived (TCPDatagram packet) {
                 sendPackets();
 
                 currentState = ESTABLISHED;
+                cout << "ESTABLISHED" << endl;
             }
             break;
 
         case ESTABLISHED:
             if (packet.FIN) {
-                currentState = FIN_RECEIVED;
+                cout << "RECEIVED FIN" << endl;
+                // send FIN/ACK
+                TCPDatagram fin;
+                fin.SYN = false;
+                fin.FIN = true;
+                fin.ACK = true;
+                fin.windowSize = 0;
+                assignSequenceNum(fin);
+                packetQueue.push_back(fin);
+
+                sendPackets();
+
+                currentState = CLOSED;
             } else {
                 if (packetQueue.empty()) {
                     // no more data, close connection using a FIN packet
@@ -202,6 +227,8 @@ void packetReceived (TCPDatagram packet) {
                     packetQueue.push_back(fin);
 
                     sendPackets();
+
+                    currentState = FIN_SENT;
                 } else {
                     // still more packets, continue transmitting
                     sendPackets();
@@ -209,8 +236,11 @@ void packetReceived (TCPDatagram packet) {
             }
             break;
 
-        case FIN_RECEIVED:
-            // TODO
+        // ----------------- IM ACTUALLY NOT SURE HOW CONNECTION FIN WORKS, SO CHECK EVERYTHING BELOW THIS ------------------
+        case FIN_SENT:
+            if (packet.FIN) { // FIN/ACK received
+                currentState = CLOSED;
+            }
             break;
 
         case CLOSED:
