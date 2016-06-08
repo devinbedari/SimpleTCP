@@ -22,7 +22,6 @@
 // User defined headers
 #include "Common.h"
 #include "Header.h"
-#include "serverFunctions.h"
 #include "TCPDatagram.h"
 #include "TCPDatagramBuilder.h"
 
