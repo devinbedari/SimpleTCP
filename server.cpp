@@ -92,6 +92,15 @@ int dataPacketsSent = 0;
 int acksReceived = 0;
 int retransmits = 0;
 
+void sendprint(TCPDatagram packet, bool retransmission) {
+    cout << "Sending packet ";
+    cout << packet.sequenceNum << " " << controlWindow << " " << ssthresh;
+    if (retransmission) cout << " Retransmission";
+    if (packet.SYN) cout << " SYN";
+    if (packet.FIN) cout << " FIN";
+    cout << endl;
+}
+
 void sendPackets() {
     resendcount = dataPacketsSent - acksReceived;
     dataPacketsSent = 0;
@@ -101,12 +110,24 @@ void sendPackets() {
         packet.ackNum = currentAckNum; // assign ack number just before sending
         string str = packet.toString();
 
-        if (rand()%80 == 0 || sendto(udpSocket, str.c_str(), str.length(), 0, (SocketAddressGen *)& clientInfo, sizeClient) < 0) {
+        bool drop = !packet.SYN && !packet.FIN && rand()%5 == 0;
+        if (drop) cout << "DROPPED" << endl;
+        else if (sendto(udpSocket, str.c_str(), str.length(), 0, (SocketAddressGen *)& clientInfo, sizeClient) < 0) {
             // Request resend after timeout
             cerr << "Couldn't send the response ACK" << endl;
             break; // don't continue because we don't want to send out of order
         }
-        cout << "sent sequence num: " << packet.sequenceNum << endl;
+
+        bool retransmission = false;
+        if (packet.windowSize > 0) {
+            dataPacketsSent++;
+            if (dataPacketsSent <= resendcount) {
+                retransmission = true;
+                retransmits++;
+            }
+        }
+
+        sendprint(packet, retransmission);
 
         // if the packet is an empty ACK, erase it from the queue so we don't expect an ACK for this ACK
         if (packet.ACK && packet.windowSize == 0)
@@ -114,13 +135,6 @@ void sendPackets() {
         else
             iter++; // only iterate if no element is erased
 
-        if (packet.windowSize > 0) {
-            dataPacketsSent++;
-            if (dataPacketsSent <= resendcount) {
-                cout << "RETRANSMIT" << endl;
-                retransmits++;
-            }
-        }
 
         if (dataPacketsSent >= controlWindow) {
             break;
@@ -160,7 +174,7 @@ void readAndRefillQueue() {
 
 void packetReceived (TCPDatagram packet) {
 
-    cout << "received ack num: " << packet.ackNum << endl;
+    cout << "Receiving packet " << packet.ackNum << endl;
 
     // removed acknowledged packets
     while (!packetQueue.empty() && packetQueue.front().sequenceNum != packet.ackNum) {

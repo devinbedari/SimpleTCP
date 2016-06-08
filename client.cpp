@@ -91,6 +91,17 @@ void assignSequenceNum (TCPDatagram &packet) {
     currentSeqNum = nextSeqNum(packet);
 }
 
+uint16_t lastAckSent;
+
+void sendprint(TCPDatagram packet, bool retransmission) {
+    cout << "Sending packet ";
+    cout << packet.ackNum;
+    if (retransmission) cout << " Retransmission";
+    if (packet.SYN) cout << " SYN";
+    if (packet.FIN) cout << " FIN";
+    cout << endl;
+}
+
 void sendPackets() {
     for (list<TCPDatagram>::iterator iter = packetQueue.begin(); iter != packetQueue.end(); ) {
         TCPDatagram packet = *iter;
@@ -101,7 +112,8 @@ void sendPackets() {
             cerr << "Couldn't send the response ACK" << endl;
             break; // don't continue because we don't want to send out of order
         }
-        cout << "sent sequence num: " << packet.sequenceNum << endl;
+        sendprint(packet, (lastAckSent == packet.ackNum));
+        lastAckSent = packet.ackNum;
 
         // if the packet is an empty ACK, erase it from the queue so we don't expect an ACK for this ACK
         if (packet.ACK && packet.windowSize == 0)
@@ -117,7 +129,7 @@ int totalWrote = 0;
 
 void packetReceived (TCPDatagram packet) {
 
-    cout << "received ack num: " << packet.ackNum << endl;
+    cout << "Receiving packet " << packet.sequenceNum << endl;
 
     // removed all acknowledged packets
     while (!packetQueue.empty() && packet.ACK && packet.ackNum > packetQueue.front().sequenceNum) {
@@ -180,7 +192,7 @@ void packetReceived (TCPDatagram packet) {
                     cout << "OUT OF ORDER" << endl;
                 }
 
-                if ((rand()%80) == 0) break;
+                //if ((rand()%20) == 0) break;
 //                cout << "client receieved data: " << packet.data << endl;
                 // wait until timeout to send ack
                 TCPDatagram ack;
