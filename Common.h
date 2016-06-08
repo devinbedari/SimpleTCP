@@ -21,5 +21,8 @@ void initializeSocketClient(char* const &hostN, char* const &portN, int *socketD
 void closeSocketServer( int *socket );
 void closeSocketClient( AddressInfo* address, int* socketDesc );
 void closeSocket( int *socket );
+void changeWindow (int &windowSize, int &threshold , bool success);
 
 const unsigned int MSS = 1032; // maximum segment size
+int ssthresh = 15;
+

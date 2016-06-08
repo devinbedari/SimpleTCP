@@ -102,3 +102,24 @@ void closeSocketClient( AddressInfo *address, int *socketDesc )
     freeaddrinfo(address); 
     close(*socketDesc);
 }
+
+// Change the window size accorging to the client/server value
+void changeWindow (int &windowSize, int &threshold , bool success)
+{
+    if(success)
+    {
+        if(windowSize <= threshold)
+        {
+            windowSize *= 2;
+        }
+        else
+        {
+            windowSize += 1;
+        }
+    }
+    else
+    {
+        windowSize = 1;
+        threshold = threshold/2;
+    }
+}
