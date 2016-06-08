@@ -87,10 +87,8 @@ void assignSequenceNum (TCPDatagram &packet) {
     currentSeqNum = nextSeqNum(packet);
 }
 
-int resendcount = 0;
 int dataPacketsSent = 0;
 int acksReceived = 0;
-int retransmits = 0;
 
 void sendprint(TCPDatagram packet, bool retransmission) {
     cout << "Sending packet ";
@@ -102,7 +100,7 @@ void sendprint(TCPDatagram packet, bool retransmission) {
 }
 
 void sendPackets() {
-    resendcount = dataPacketsSent - acksReceived;
+    int resendcount = dataPacketsSent - acksReceived;
     dataPacketsSent = 0;
     for (list<TCPDatagram>::iterator iter = packetQueue.begin(); iter != packetQueue.end(); ) {
         TCPDatagram packet = *iter;
@@ -110,11 +108,9 @@ void sendPackets() {
         packet.ackNum = currentAckNum; // assign ack number just before sending
         string str = packet.toString();
 
-        bool drop = !packet.SYN && !packet.FIN && rand()%5 == 0;
-        if (drop) cout << "DROPPED" << endl;
-        else if (sendto(udpSocket, str.c_str(), str.length(), 0, (SocketAddressGen *)& clientInfo, sizeClient) < 0) {
+        if (sendto(udpSocket, str.c_str(), str.length(), 0, (SocketAddressGen *)& clientInfo, sizeClient) < 0) {
             // Request resend after timeout
-            cerr << "Couldn't send the response ACK" << endl;
+            cerr << "Couldn't send" << endl;
             break; // don't continue because we don't want to send out of order
         }
 
@@ -123,7 +119,6 @@ void sendPackets() {
             dataPacketsSent++;
             if (dataPacketsSent <= resendcount) {
                 retransmission = true;
-                retransmits++;
             }
         }
 
@@ -224,8 +219,6 @@ void packetReceived (TCPDatagram packet) {
                 currentState = CLOSED;
             } else {
 
-                cout << "CONNECTION ESTABLISHED" << endl;
-
                 struct timeval tv;
                 tv.tv_sec = 0;
                 tv.tv_usec = 500000;
@@ -259,8 +252,6 @@ void packetReceived (TCPDatagram packet) {
 
         case ESTABLISHED:
             if (packet.FIN) {
-                cout << "RECEIVED FIN" << endl;
-                // send FIN/ACK
                 TCPDatagram fin;
                 fin.SYN = false;
                 fin.FIN = true;
@@ -295,7 +286,6 @@ void packetReceived (TCPDatagram packet) {
 
                     currentState = FIN_SENT;
                 } else {
-                    cerr << endl << "eControl Window Size: " << controlWindow << endl;
                     // still more packets, continue transmitting
                     sendPackets();
                     // Increase/Decrease window size:
@@ -343,7 +333,7 @@ int main ( int argc, char *argv[] )
             if (builder->isComplete()) {
                 packetReceived(*(builder->getDatagram()));
             } else {
-                cout << "PACKET INCOMPLETE" << endl;
+                cerr << "PACKET INCOMPLETE" << endl;
             }
 
             delete builder;
@@ -354,9 +344,6 @@ int main ( int argc, char *argv[] )
             continue;
         }
     }
-
-    cout << "num retransmits" << retransmits << endl;
-
     // Close the connection
     closeSocketServer(&udpSocket);
 }

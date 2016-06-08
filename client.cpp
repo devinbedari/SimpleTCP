@@ -186,10 +186,7 @@ void packetReceived (TCPDatagram packet) {
                 if (arrivedInOrder) {
                     write(saveFd, packet.data.c_str(), packet.data.length());
                     lastWrittenPacket = packet;
-                    cout << "wrote packet " << packet.sequenceNum << endl;
                     totalWrote++;
-                } else {
-                    cout << "OUT OF ORDER" << endl;
                 }
 
                 //if ((rand()%20) == 0) break;
@@ -257,39 +254,15 @@ int main ( int argc, char *argv[] )
             if (builder->isComplete()) {
                 packetReceived(*(builder->getDatagram()));
             } else {
-                cout << "PACKET INCOMPLETE" << endl;
+                cerr << "PACKET INCOMPLETE" << endl;
             }
 
             delete builder;
         } else {
-            cerr << "Could not obtain incoming SYN datagram" << endl;
+            cerr << "Could not receive" << endl;
             continue;
         }
     }
-
-    cout << "totalWrote: " << totalWrote << endl;
-
-    /*
-    // Debugging Only: Unit test send datagram:
-    // Create the message buffer to send
-    char messageToSend[30];
-    int flag = 1;
-    int bytesSent;
-    strcpy(messageToSend, "Hello, World!");-
-    for (size_t i = 0; flag != 0; i++) 
-    {
-        // ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen);
-        if ( (bytesSent = (sendto(udpSocket, messageToSend, strlen(messageToSend), 0, p->ai_addr, p->ai_addrlen))) == -1) 
-        {
-            cerr << "Could not send datagram to server" << endl;
-            exit(1);
-        }
-        cout << "Sending packet: " << i << endl;
-        cout << "Datagram of " << bytesSent << " bytes sent" << endl;
-        if (bytesSent == 13)
-            flag = 0;
-    }
-    */
 
     // Close the connection
     closeSocketClient(bindAddress, &udpSocket);
