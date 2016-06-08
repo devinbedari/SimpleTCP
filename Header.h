@@ -31,5 +31,5 @@ void setHeader(uint16_t seq, uint16_t ack, uint16_t winSize, uint16_t flag, Head
 void getFlags(uint16_t flag, bool &ACKFlag, bool &SYNFlag, bool &FINFlag);
 void genPacket(char*& packet, Headers& headerVal, char* payload, unsigned int pktMSS);//, unsigned int pktMSS);
 void parsePacket(char* packet, Headers& headerVal, char*& payload, unsigned int pktMSS);//, unsigned int pktMSS);
-uint16_t genRand();
+uint16_t genRand(int seed);
 uint16_t genNextNum (uint16_t prev, uint16_t incBytes);

@@ -40,13 +40,11 @@ AddressInfo *bindAddress, *p;
 enum TCPConnectionState { START, SYN_SENT, ESTABLISHED, FIN_SENT, CLOSED };
 
 TCPConnectionState currentState = START;
-int currentAckNum = 0;
-int currentSeqNum = 0;
+uint16_t cumulativeAckNum = 0;
+uint16_t currentSeqNum = 0;
 int packetWindow = 0;
-int controlWindow = 10; // arbitrary value for now
 bool established = false;
 list<TCPDatagram> packetQueue; // queue of packets to send and acknowledge. Sends packets at packetQueue.front() first
-unordered_set<unsigned int> expectedAckNums; // ack numbers that we expect from the client, to ensure the client is sending valid acks
 
 // Handles parsing and errors
 void parse( int argcount, char *argval[], char* &host_name, char* &port_n, char* &fileReq)
@@ -83,8 +81,8 @@ void parse( int argcount, char *argval[], char* &host_name, char* &port_n, char*
 }
 
 // calculates the next sequence number
-int nextSeqNum(TCPDatagram packet) {
-    return packet.sequenceNum + (packet.windowSize > 0 ? packet.windowSize : 1);
+uint16_t nextSeqNum(TCPDatagram packet) {
+    return (packet.sequenceNum + (packet.windowSize > 0 ? packet.windowSize : 1)) % 30720;
 }
 
 // assigns a sequence number
@@ -94,12 +92,8 @@ void assignSequenceNum (TCPDatagram &packet) {
 }
 
 void sendPackets() {
-    expectedAckNums.clear(); // clear set
-
-    int packetsSent = 0;
-    for (list<TCPDatagram>::iterator iter = packetQueue.begin(); iter != packetQueue.end(); ++iter) {
+    for (list<TCPDatagram>::iterator iter = packetQueue.begin(); iter != packetQueue.end(); ) {
         TCPDatagram packet = *iter;
-        packet.ackNum = currentAckNum; // assign ack number just before sending
         string str = packet.toString();
 
         if (sendto(udpSocket, str.c_str(), str.length(), 0, p->ai_addr, p->ai_addrlen) < 0) {
@@ -107,50 +101,55 @@ void sendPackets() {
             cerr << "Couldn't send the response ACK" << endl;
             break; // don't continue because we don't want to send out of order
         }
-        int expectedAckNum = nextSeqNum(packet);
-        expectedAckNums.insert(expectedAckNum); // add sequence number to set
         cout << "sent sequence num: " << packet.sequenceNum << endl;
-        if (++packetsSent > controlWindow) break;
+
+        // if the packet is an empty ACK, erase it from the queue so we don't expect an ACK for this ACK
+        if (packet.ACK && packet.windowSize == 0)
+            iter = packetQueue.erase(iter); // remember: erasing an element will move iterator to next element
+        else
+            iter++; // only iterate if no element is erased
     }
 }
 
-int HARDCODEDTIMEOUT = 0;
+int saveFd;
+TCPDatagram lastWrittenPacket;
+int totalWrote = 0;
 
 void packetReceived (TCPDatagram packet) {
 
     cout << "received ack num: " << packet.ackNum << endl;
-
-    // if connection is open, and ack number doesn't match any of the expected ack numbers, drop the packet
-    if (currentState != START && expectedAckNums.count(packet.ackNum) == 0) {
-        cout << "ACK MISMATCH" << endl;
-        return;
-    }
 
     // removed all acknowledged packets
     while (!packetQueue.empty() && packet.ACK && packet.ackNum > packetQueue.front().sequenceNum) {
         packetQueue.pop_front(); // packet acknowledged, removed from queue
     }
 
-    if (currentAckNum == packet.sequenceNum) {
-        currentAckNum = nextSeqNum(packet);
+    bool arrivedInOrder = packet.sequenceNum == nextSeqNum(lastWrittenPacket);
+
+    if (cumulativeAckNum == packet.sequenceNum) {
+        cumulativeAckNum = nextSeqNum(packet);
     }
 
     switch (currentState) {
 
         case SYN_SENT:
             if (packet.SYN && packet.ACK) {
-                currentAckNum = nextSeqNum(packet);
+                cumulativeAckNum = nextSeqNum(packet);
+                lastWrittenPacket = packet;
 
-                TCPDatagram packet;
-                packet.SYN = false;
-                packet.FIN = false;
-                packet.ACK = true;
-                packet.data = fileName;
-                packet.windowSize = packet.data.length();
-                assignSequenceNum(packet);
-                packetQueue.push_back(packet);
+                TCPDatagram fileReq;
+                fileReq.SYN = false;
+                fileReq.FIN = false;
+                fileReq.ACK = true;
+                fileReq.ackNum = nextSeqNum(packet);
+                fileReq.data = fileName;
+                fileReq.windowSize = fileReq.data.length();
+                assignSequenceNum(fileReq);
+                packetQueue.push_back(fileReq);
 
                 sendPackets();
+        
+                saveFd = open("received.data", O_CREAT|O_RDWR|O_TRUNC, 0666);
 
                 currentState = ESTABLISHED;
             }
@@ -171,18 +170,27 @@ void packetReceived (TCPDatagram packet) {
 
                 currentState = CLOSED;
             } else {
+
+                if (arrivedInOrder) {
+                    write(saveFd, packet.data.c_str(), packet.data.length());
+                    lastWrittenPacket = packet;
+                    cout << "wrote packet " << packet.sequenceNum << endl;
+                    totalWrote++;
+                } else {
+                    cout << "OUT OF ORDER" << endl;
+                }
+
+                if ((rand()%80) == 0) break;
 //                cout << "client receieved data: " << packet.data << endl;
                 // wait until timeout to send ack
-                if (++HARDCODEDTIMEOUT >= 3) {
+                TCPDatagram ack;
+                ack.ACK = true;
+                ack.ackNum = nextSeqNum(packet);
+                ack.windowSize = 0;
+                assignSequenceNum(ack);
+                packetQueue.push_back(ack);
 
-                    TCPDatagram finack;
-                    finack.ACK = true;
-                    finack.windowSize = 0;
-                    assignSequenceNum(finack);
-                    packetQueue.push_back(finack);
-
-                    sendPackets();
-                }
+                sendPackets();
             }
             break;
 
@@ -211,14 +219,14 @@ int main ( int argc, char *argv[] )
     // Initialize the connection
     initializeSocketClient(hostName, port, &udpSocket, bindAddress, p);
 
-    currentSeqNum = genRand();
+    currentSeqNum = genRand(5463);
 
     TCPDatagram packet;
     packet.SYN = true;
     packet.FIN = false;
     packet.ACK = false;
     packet.windowSize = 0;
-    packet.ackNum = currentAckNum;
+    packet.ackNum = cumulativeAckNum;
     assignSequenceNum(packet);
     packetQueue.push_back(packet);
 
@@ -246,6 +254,8 @@ int main ( int argc, char *argv[] )
             continue;
         }
     }
+
+    cout << "totalWrote: " << totalWrote << endl;
 
     /*
     // Debugging Only: Unit test send datagram:

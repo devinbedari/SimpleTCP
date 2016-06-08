@@ -9,9 +9,9 @@ void setHeader(uint16_t seq, uint16_t ack, uint16_t winSize, uint16_t flag, Head
 }
 
 // Generate a random starting sequence number
-uint16_t genRand() 
+uint16_t genRand(int seed) 
 { 
-	srand(time(NULL));
+	srand(seed);
     return (rand() % 0x7800);
 } 
 
