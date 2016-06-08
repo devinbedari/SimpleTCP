@@ -130,13 +130,41 @@ void sendPackets() {
     acksReceived = 0;
 }
 
+int FileDes;
+bool finishedReading = false;
+
+void readAndRefillQueue() {
+
+    int maxDataSize = MSS-8; // subtract 8 bytes for header
+    char* buf = new char[maxDataSize];
+    int bytesRead;
+
+    while (((int) packetQueue.size()) < controlWindow) {
+        bytesRead = read(FileDes, buf, maxDataSize);
+
+        if (bytesRead <= 0) {
+            finishedReading = true;
+            close(FileDes);
+            break;
+        }
+
+        TCPDatagram pkt;
+        pkt.data.append(buf, bytesRead);
+        pkt.windowSize = bytesRead;
+        assignSequenceNum(pkt);
+        packetQueue.push_back(pkt);
+    }
+
+    free(buf);
+}
+
 void packetReceived (TCPDatagram packet) {
 
     cout << "received ack num: " << packet.ackNum << endl;
 
     // removed acknowledged packet only if it matches the front of the queue
     // to prevent out of order sends
-    if (nextSeqNum(packetQueue.front()) == packet.ackNum) {
+    if (!packetQueue.empty() && nextSeqNum(packetQueue.front()) == packet.ackNum) {
         packetQueue.pop_front();
         acksReceived++;
     }
@@ -201,23 +229,14 @@ void packetReceived (TCPDatagram packet) {
                 fileLocation += packet.data;
 
                 // cerr << "Opening file: " << fileLocation << endl;
-                int FileDes = open(fileLocation.c_str(), O_RDONLY);
+                FileDes = open(fileLocation.c_str(), O_RDONLY);
                 if (FileDes == -1)
                 {
                     cerr << "Fatal Error: Could not opend file. Are you sure you have the right permissions?" << endl;
                     exit(0);
                 }
 
-                TCPDatagram* packets;
-
-                // Open folder and package the file into TCP packets
-                int numOfPackets = splitFile(FileDes, packets, MSS);
-                cout << "num of packets: " << numOfPackets << endl;
-
-                for (int i = 0; i < numOfPackets; i++) {
-                    assignSequenceNum(packets[i]);
-                    packetQueue.push_back(packets[i]);
-                }
+                readAndRefillQueue();
 
                 sendPackets();
 
@@ -242,6 +261,8 @@ void packetReceived (TCPDatagram packet) {
                 currentState = CLOSED;
             } else if (acksReceived >= dataPacketsSent) {
 
+                if (!finishedReading) readAndRefillQueue();
+
                 if (packetQueue.empty()) {
                     // no more data, close connection using a FIN packet
                     TCPDatagram fin;
@@ -249,7 +270,7 @@ void packetReceived (TCPDatagram packet) {
                     fin.FIN = true;
                     fin.ACK = true;
                     fin.windowSize = 0;
-                    assignSequenceNum(packet);
+                    assignSequenceNum(fin);
                     packetQueue.push_back(fin);
 
                     //cerr << endl << "eiControl Window Size: " << controlWindow << endl;

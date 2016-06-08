@@ -108,7 +108,7 @@ void changeWindow (int &windowSize, int &threshold , bool success)
 {
     if(success)
     {
-        if(windowSize <= threshold)
+        if(windowSize <= 5)
         {
             windowSize *= 2;
         }
