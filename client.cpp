@@ -115,6 +115,10 @@ int saveFd;
 TCPDatagram lastWrittenPacket;
 int totalWrote = 0;
 
+bool leqCircular(int a, int b, int size) {
+    return ((a-b+size)%(size/2)) < size/2;
+}
+
 void packetReceived (TCPDatagram packet) {
 
     cout << "received ack num: " << packet.ackNum << endl;
@@ -126,7 +130,7 @@ void packetReceived (TCPDatagram packet) {
 
     bool arrivedInOrder = packet.sequenceNum == nextSeqNum(lastWrittenPacket);
 
-    if (cumulativeAckNum == packet.sequenceNum) {
+    if (leqCircular(packet.sequenceNum, cumulativeAckNum, 65536)) {
         cumulativeAckNum = nextSeqNum(packet);
     }
 
@@ -141,7 +145,7 @@ void packetReceived (TCPDatagram packet) {
                 fileReq.SYN = false;
                 fileReq.FIN = false;
                 fileReq.ACK = true;
-                fileReq.ackNum = nextSeqNum(packet);
+                fileReq.ackNum = cumulativeAckNum;
                 fileReq.data = fileName;
                 fileReq.windowSize = fileReq.data.length();
                 assignSequenceNum(fileReq);
@@ -185,7 +189,7 @@ void packetReceived (TCPDatagram packet) {
                 // wait until timeout to send ack
                 TCPDatagram ack;
                 ack.ACK = true;
-                ack.ackNum = nextSeqNum(packet);
+                ack.ackNum = cumulativeAckNum;
                 ack.windowSize = 0;
                 assignSequenceNum(ack);
                 packetQueue.push_back(ack);
