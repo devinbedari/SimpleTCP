@@ -92,7 +92,7 @@ int acksReceived = 0;
 
 void sendprint(TCPDatagram packet, bool retransmission) {
     cout << "Sending packet ";
-    cout << packet.sequenceNum << " " << controlWindow << " " << ssthresh;
+    cout << packet.sequenceNum << " " << controlWindow*1024 << " " << ssthresh*1024;
     if (retransmission) cout << " Retransmission";
     if (packet.SYN) cout << " SYN";
     if (packet.FIN) cout << " FIN";
