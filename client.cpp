@@ -115,10 +115,6 @@ int saveFd;
 TCPDatagram lastWrittenPacket;
 int totalWrote = 0;
 
-bool leqCircular(int a, int b, int size) {
-    return ((a-b+size)%(size/2)) < size/2;
-}
-
 void packetReceived (TCPDatagram packet) {
 
     cout << "received ack num: " << packet.ackNum << endl;
@@ -130,7 +126,7 @@ void packetReceived (TCPDatagram packet) {
 
     bool arrivedInOrder = packet.sequenceNum == nextSeqNum(lastWrittenPacket);
 
-    if (leqCircular(packet.sequenceNum, cumulativeAckNum, 65536)) {
+    if (packet.sequenceNum == cumulativeAckNum) {
         cumulativeAckNum = nextSeqNum(packet);
     }
 

@@ -162,9 +162,8 @@ void packetReceived (TCPDatagram packet) {
 
     cout << "received ack num: " << packet.ackNum << endl;
 
-    // removed acknowledged packet only if it matches the front of the queue
-    // to prevent out of order sends
-    if (!packetQueue.empty() && nextSeqNum(packetQueue.front()) == packet.ackNum) {
+    // removed acknowledged packets
+    while (!packetQueue.empty() && packetQueue.front().sequenceNum != packet.ackNum) {
         packetQueue.pop_front();
         acksReceived++;
     }
