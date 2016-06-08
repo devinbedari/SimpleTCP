@@ -101,7 +101,7 @@ void sendPackets() {
         packet.ackNum = currentAckNum; // assign ack number just before sending
         string str = packet.toString();
 
-        if (sendto(udpSocket, str.c_str(), str.length(), 0, (SocketAddressGen *)& clientInfo, sizeClient) < 0) {
+        if (rand()%80 == 0 || sendto(udpSocket, str.c_str(), str.length(), 0, (SocketAddressGen *)& clientInfo, sizeClient) < 0) {
             // Request resend after timeout
             cerr << "Couldn't send the response ACK" << endl;
             break; // don't continue because we don't want to send out of order
