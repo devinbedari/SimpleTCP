@@ -120,7 +120,7 @@ void changeWindow (int &windowSize, int &threshold , bool success)
     else
     {
         windowSize = 1;
-        threshold = windowSize/2 < 1024 ? 1024 : windowSize/2;
+        threshold = windowSize/2 < 1 ? 1 : windowSize/2;
     }
 
     if (windowSize > 15) windowSize = 15; // NEVER LET IT PAST 15, note that largest window size is (2^16/2^10 = 64)
